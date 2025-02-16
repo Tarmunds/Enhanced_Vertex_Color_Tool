@@ -66,6 +66,7 @@ class VertexColorGradientFillOperator(bpy.types.Operator):
     bl_label = "Apply Gradient to Vertex Color"
     bl_options = {'REGISTER', 'UNDO'}
 
+
     def execute(self, context):
         direction = context.scene.gradient_direction
         target_channel = context.scene.gradient_target_channel
@@ -74,14 +75,14 @@ class VertexColorGradientFillOperator(bpy.types.Operator):
         use_world_space = context.scene.gradient_use_world_space
 
         if global_gradient:
-            self.apply_global_gradient(context.selected_objects, direction, target_channel, inverse_gradient)
+            self.apply_global_gradient(context.selected_objects, direction, target_channel, inverse_gradient, context)
         else:
             for obj in context.selected_objects:
                 if obj.type == 'MESH':
-                    self.apply_gradient(obj, direction, target_channel, inverse_gradient, use_world_space)
+                    self.apply_gradient(obj, direction, target_channel, inverse_gradient, use_world_space, context)
         return {'FINISHED'}
 
-    def apply_gradient(self, obj, direction, target_channel, inverse_gradient, use_world_space):
+    def apply_gradient(self, obj, direction, target_channel, inverse_gradient, use_world_space, context):
         if not obj.data.vertex_colors:
             obj.data.vertex_colors.new()
 
@@ -94,6 +95,7 @@ class VertexColorGradientFillOperator(bpy.types.Operator):
             for loop_idx in poly.loop_indices:
                 coord = self.get_coordinate(obj.data.loops[loop_idx].vertex_index, obj, direction, use_world_space)
                 gradient_value = (coord - min_val) / (max_val - min_val)
+                gradient_value = context.scene.gradient_start + gradient_value * (context.scene.gradient_end - context.scene.gradient_start)
                 if inverse_gradient:
                     gradient_value = 1.0 - gradient_value
                 r, g, b, a = vcol_layer.data[loop_idx].color
@@ -104,7 +106,7 @@ class VertexColorGradientFillOperator(bpy.types.Operator):
                 elif target_channel == 'BLUE':
                     vcol_layer.data[loop_idx].color = (r, g, gradient_value, a)
 
-    def apply_global_gradient(self, objects, direction, target_channel, inverse_gradient):
+    def apply_global_gradient(self, objects, direction, target_channel, inverse_gradient, context):
         all_coords = []
         for obj in objects:
             if obj.type == 'MESH':
@@ -127,6 +129,7 @@ class VertexColorGradientFillOperator(bpy.types.Operator):
                     for loop_idx in poly.loop_indices:
                         coord = self.get_global_coordinate(obj.data.loops[loop_idx].vertex_index, obj, direction)
                         gradient_value = (coord - min_val) / (max_val - min_val)
+                        gradient_value = context.scene.gradient_start + gradient_value * (context.scene.gradient_end - context.scene.gradient_start)
                         if inverse_gradient:
                             gradient_value = 1.0 - gradient_value
                         r, g, b, a = vcol_layer.data[loop_idx].color
@@ -547,7 +550,6 @@ class VertexColorClearChannelOperator(bpy.types.Operator):
         self.report({'INFO'}, f"Cleared {channel} channel to {self.value} for {affected_objects} object(s).")
         return {'FINISHED'}
 
-
 class VertexColorFillPanel(bpy.types.Panel):
     bl_label = "Enhanced Vertex Color Tool"
     bl_idname = "OBJECT_PT_vertex_color_tool"
@@ -609,6 +611,8 @@ class VertexColorFillPanel(bpy.types.Panel):
             box.prop(scene, "vertex_fill_alpha", text="Alpha Value")
             box.operator("object.fill_vertex_alpha", text="Apply Alpha Fill")
 
+
+
         # Gradient Fill Section
         box = layout.box()
         row = box.row()
@@ -623,6 +627,12 @@ class VertexColorFillPanel(bpy.types.Panel):
             box.prop(scene, "gradient_use_world_space", text="Use World Cordinate")
             box.prop(scene, "gradient_global", text="Global Gradient")
             box.operator("object.vertex_color_gradient_fill", text="Apply Gradient")
+            box.prop(scene, "show_gradient_range",
+                 icon='TRIA_DOWN' if scene.show_gradient_range else 'TRIA_RIGHT',
+                 text="Gradient Range", emboss=False)            
+            if scene.show_gradient_range:
+                box.prop(context.scene, "gradient_start")
+                box.prop(context.scene, "gradient_end")
 
         # Randomize Colors Section
         box = layout.box()
@@ -705,8 +715,6 @@ class VertexColorFillPanel(bpy.types.Panel):
             box.operator("vertex_color.clear_channel", text="Clear to 0").value = 0
             box.operator("vertex_color.clear_channel", text="Clear to 1").value = 1
 
-        
-
 def register_properties():
     bpy.types.Scene.show_fill_colors = bpy.props.BoolProperty(
         name="Show Fill Colors",
@@ -722,6 +730,11 @@ def register_properties():
         name="Show Gradient Fill",
         default=False,
         description="Expand or collapse the Gradient Fill section"
+    )
+    bpy.types.Scene.show_gradient_range = bpy.props.BoolProperty(
+        name="Show Gradient Range",
+        default=False,
+        description="Expand or collapse the Gradient Range section"
     )
     bpy.types.Scene.show_randomize_colors = bpy.props.BoolProperty(
         name="Show Randomize Colors",
@@ -758,6 +771,7 @@ def unregister_properties():
     del bpy.types.Scene.show_fill_colors
     del bpy.types.Scene.show_fill_alpha
     del bpy.types.Scene.show_gradient_fill
+    del bpy.types.Scene.show_gradient_range
     del bpy.types.Scene.show_randomize_colors
     del bpy.types.Scene.show_merge_layers
     del bpy.types.Scene.show_bake_ao
@@ -950,6 +964,19 @@ def register():
         ],
         default='R',
     )
+
+    bpy.types.Scene.gradient_start = bpy.props.FloatProperty(
+        name="Start Value",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+    )
+    bpy.types.Scene.gradient_end = bpy.props.FloatProperty(
+        name="End Value",
+        default=1.0,
+        min=0.0,
+        max=1.0,
+    )
     register_properties()
 
 def unregister():
@@ -975,6 +1002,8 @@ def unregister():
     del bpy.types.Scene.ao_uv_index
     del bpy.types.Scene.bake_progress
     del bpy.types.Scene.vertex_color_clear_channel
+    del bpy.types.Scene.gradient_start
+    del bpy.types.Scene.gradient_end
 
     unregister_properties()
 
