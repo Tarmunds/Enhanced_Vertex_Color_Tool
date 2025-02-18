@@ -1,12 +1,21 @@
 import bpy, random, bmesh, time, numpy as np
 from bpy_extras.io_utils import ImportHelper
 
+def ensure_object_mode(self, context):
+    if context.object and context.object.mode != 'OBJECT':
+        self.report({'ERROR'}, "Only usable in Object Mode.")
+        return False
+    return True
+
 class VCT_VertexColorFillOperator(bpy.types.Operator):
     bl_idname = "object.vertex_color_fill"
     bl_label = "Fill Vertex Color"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}
+        
         color = context.scene.vertex_fill_color
         for obj in context.selected_objects:
             if obj.type == 'MESH':
@@ -30,10 +39,13 @@ class VCT_VertexColorFillWhiteOperator(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}
+
         color = (1.0, 1.0, 1.0)
         for obj in context.selected_objects:
             if obj.type == 'MESH':
-                VertexColorFillOperator.fill_vertex_color(self, obj, color)
+                VCT_VertexColorFillOperator.fill_vertex_color(self, obj, color)
         return {'FINISHED'}
 
 class VCT_VertexColorFillBlackOperator(bpy.types.Operator):
@@ -42,10 +54,13 @@ class VCT_VertexColorFillBlackOperator(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}
+
         color = (0.0, 0.0, 0.0)
         for obj in context.selected_objects:
             if obj.type == 'MESH':
-                VertexColorFillOperator.fill_vertex_color(self, obj, color)
+                VCT_VertexColorFillOperator.fill_vertex_color(self, obj, color)
         return {'FINISHED'}
 
 class VCT_VertexColorGradientFillOperator(bpy.types.Operator):
@@ -60,6 +75,9 @@ class VCT_VertexColorGradientFillOperator(bpy.types.Operator):
         inverse_gradient = context.scene.gradient_inverse
         global_gradient = context.scene.gradient_global
         use_world_space = context.scene.gradient_use_world_space
+
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}
 
         if global_gradient:
             self.apply_global_gradient(context.selected_objects, direction, target_channel, inverse_gradient, context)
@@ -163,6 +181,9 @@ class VCT_VertexColorRandomizeOperator(bpy.types.Operator):
         normalize = context.scene.random_normalize
         objects = [obj for obj in context.selected_objects if obj.type == 'MESH']
 
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}
+
         if normalize and objects:
             step = 1.0 / max(1, len(objects) - 1)
             normalized_values = [i * step for i in range(len(objects))]
@@ -199,6 +220,9 @@ class VCT_FillVertexAlphaOperator(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}
+
         alpha_value = context.scene.vertex_fill_alpha
         for obj in context.selected_objects:
             if obj.type == 'MESH':
@@ -246,6 +270,9 @@ class VCT_BakeAOToVertexColor(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
     def execute(self, context):
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}
+
         self._selected_objects = [obj for obj in context.selected_objects if obj.type == 'MESH']
 
         if not self._selected_objects:
@@ -320,13 +347,23 @@ class VCT_BakeAOToVertexColor(bpy.types.Operator):
             for loop_index in poly.loop_indices:
                 loop = obj.data.loops[loop_index]
                 uv = obj.data.uv_layers[uv_index].data[loop_index].uv
-                x = int(uv.x * width)
-                y = int(uv.y * height)
+
+                # Check if UV is outside the valid [0,1] range
+                if not (0.0 <= uv.x <= 1.0 and 0.0 <= uv.y <= 1.0):
+                    self.report({'WARNING'}, f"UV island out of the UV shell in object '{obj.name}', skipping vertex color assignment.")
+                    continue
+
+                # Clamp UV coordinates to ensure they stay in valid range
+                x = min(max(int(uv.x * width), 0), width - 1)
+                y = min(max(int(uv.y * height), 0), height - 1)
+
                 pixel_index = (y * width + x) * 4
 
-                color = vertex_color.data[loop_index].color
-                color[channel_index] = pixels[pixel_index]
-                vertex_color.data[loop_index].color = color
+                # Ensure pixel_index is within the valid range
+                if 0 <= pixel_index < len(pixels):
+                    color = vertex_color.data[loop_index].color
+                    color[channel_index] = pixels[pixel_index]
+                    vertex_color.data[loop_index].color = color
 
         # Cleanup
         bpy.data.images.remove(temp_image)
@@ -419,6 +456,9 @@ class VCT_BAKE_OT_import_image(bpy.types.Operator, ImportHelper):
     )
 
     def execute(self, context):
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}        
+        
         try:
             image = bpy.data.images.load(self.filepath)
             context.scene.bake_texture_image = image
@@ -437,7 +477,9 @@ class VCT_BAKE_OT_texture_to_vertex_colors(bpy.types.Operator):
     def execute(self, context):
         selected_objects = [obj for obj in context.selected_objects if obj.type == 'MESH']
         scene = context.scene
-
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}
+        
         if not selected_objects:
             self.report({'ERROR'}, "No mesh objects selected")
             return {'CANCELLED'}
@@ -518,6 +560,9 @@ class VCT_SwitchVertexColorsOperator(bpy.types.Operator):
         source_channel = context.scene.vc_source_channel
         target_channel = context.scene.vc_target_channel
 
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}
+
         if source_channel == target_channel:
             self.report({'ERROR'}, "Source and target channels are the same")
             return {'CANCELLED'}
@@ -580,6 +625,9 @@ class VCT_VertexColorClearChannelOperator(bpy.types.Operator):
     value: bpy.props.FloatProperty()
 
     def execute(self, context):
+        if not ensure_object_mode(self, context):
+            return {'CANCELLED'}
+
         selected_objects = [obj for obj in context.selected_objects if obj.type == 'MESH']
 
         if not selected_objects:

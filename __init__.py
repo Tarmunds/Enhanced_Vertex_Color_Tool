@@ -67,7 +67,7 @@ def register_properties():
     bpy.types.Scene.show_clear_channels = bpy.props.BoolProperty(
         name="Show Clear Channels",
         default=False,
-        description="Expand or collapse the Switch Channels section"
+        description="Expand or collapse the Clear Channels section"
     )
 
 def unregister_properties():
@@ -117,9 +117,9 @@ def register():
     bpy.types.Scene.gradient_direction = bpy.props.EnumProperty(
         name="Gradient Direction",
         items=[
-            ('BOTTOM_TOP', "Bottom-Top", "Gradient along Z-axis"),
-            ('LEFT_RIGHT', "Left-Right", "Gradient along X-axis"),
-            ('FRONT_BACK', "Front-Back", "Gradient along Y-axis")
+            ('BOTTOM_TOP', "Bottom <> Top - Z axis", "Gradient along Z-axis"),
+            ('LEFT_RIGHT', "Left <> Right - X axis", "Gradient along X-axis"),
+            ('FRONT_BACK', "Front <> Back - Y axis", "Gradient along Y-axis")
         ],
         default='BOTTOM_TOP'
     )
