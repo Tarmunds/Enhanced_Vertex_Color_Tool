@@ -55,4 +55,4 @@ Showcase of the Bake Ambiant Occlusion, Switch Channels and Clear Channels :
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the GNU License. See `LICENSE` for more information.
