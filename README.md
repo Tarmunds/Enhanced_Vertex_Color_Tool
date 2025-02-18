@@ -1,4 +1,4 @@
-# Vertex Color Tool for Blender
+# Enhanced Vertex Color Tool for Blender
 
 The **Enhanced Vertex Color Tool** is a Blender addon designed to streamline the process of working with vertex colors in 3D models. It offers a set of advanced tools for filling, gradient-based coloring, randomizing vertex colors, baking textures or AO, switching or clearing channels, all within an intuitive panel interface.
 
