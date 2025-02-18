@@ -4,8 +4,8 @@ bl_info = {
     "category": "Object",
     "version": (2, 5, 0),
     "author": "Tarmunds",
-    "description": "Advanced vertex color tools: fill, gradients, randomization, layer merging, baked AO in vertex color, bake texture in vertex color, and switch channels.",
-    "doc_url": "https://tarmunds.gumroad.com/l/UnrealExporter",
+    "description": "Advanced vertex color tools: fill, gradients, randomization, baked AO in vertex color, bake texture in vertex color, and switch/clear channels.",
+    "doc_url": "https://tarmunds.gumroad.com/l/EnhancedVertexColorTool",
     "tracker_url": "https://discord.gg/h39W5s5ZbQ",
     "location": "View3D > Tarmunds Addons > Export Unreal",
 }
