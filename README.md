@@ -22,16 +22,20 @@ At the top of the panel, you'll find the boolean operator to turn the vertex col
 
 ## Demo
 Showcase of the vertex color preview, fill color and fill alpha :
-[seeandapply](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_SeeAndApply.gif)
+![seeandapply](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_SeeAndApply.gif)
 
 Showcase of the vertex color gradient :
-[gradient](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_Gradient.gif)
+![gradient](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_Gradient.gif)
+
 Showcase of the vertex color Randomize :
-[random](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_Random.gif)
+![random](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_Random.gif)
+
 Showcase of the Bake Texture :
-[baketexture](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_Texture.gif)
+![baketexture](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_Texture.gif)
+
 Showcase of the Bake Ambiant Occlusion, Switch Channels and Clear Channels :
-[ao](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_AoSwitchClear.gif)
+![ao](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_AoSwitchClear.gif)
+
 ## Installation
 
 1. Download the latest version from GitHub or Gumroad.
