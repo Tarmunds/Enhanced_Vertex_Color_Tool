@@ -1,57 +1,42 @@
 # Vertex Color Tool for Blender
 
-The **Enhanced Vertex Color Tool** is a powerful Blender addon designed to streamline the process of working with vertex colors in 3D models. It offers a set of advanced tools for filling, gradient-based coloring, randomizing vertex colors, and previewing the color changes before applying them, all within an intuitive panel interface.
+The **Enhanced Vertex Color Tool** is a Blender addon designed to streamline the process of working with vertex colors in 3D models. It offers a set of advanced tools for filling, gradient-based coloring, randomizing vertex colors, baking textures or AO, switching or clearing channels, all within an intuitive panel interface.
 
 ## Features
 
-- **Vertex Color Fill Preview**: Preview the vertex color fill on selected mesh objects before committing the change. This allows for quick visual feedback on the color selection.
-- **Vertex Color Gradient Fill**: Apply a gradient to the vertex colors based on object coordinates (e.g., bottom-top, left-right, front-back) and target a specific color channel (Red, Green, Blue).
-- **Randomize Vertex Colors**: Randomize the vertex colors on selected mesh objects for a more organic and varied appearance, with control over the target color channel.
-  
-### Key Operators
-
-1. **Preview Vertex Color Fill** (`object.vertex_color_fill_preview`): Preview the vertex color fill before applying it.
-2. **Apply Gradient to Vertex Color** (`object.vertex_color_gradient_fill`): Apply a gradient to the selected mesh vertices based on chosen direction and target color channel.
-3. **Randomize Vertex Colors** (`object.vertex_color_randomize`): Randomly modify the colors of selected vertices in the chosen channel.
+- **Vertex Color Preview**: Preview the vertex color on all meshes. This allows for quick visual feedback on the color selection or effect you want to apply.
+- **Vertex Color RGB Fill**: Fill the object vertex color with the selected color in the RGB channels.
+- **Vertex Color Alpha Fill**: Fill the object vertex color with the selected value in the ALPHA channel.
+- **Vertex Color Gradient Fill**: Apply a gradient to the vertex colors based on object coordinates (e.g., bottom-top, left-right, front-back). You can target specific color channels (Red, Green, Blue) and invert the gradient if needed. The gradient can also be based on world coordinates. Additionally, you can spread the gradient across multiple selected meshes in world space only. Lastly, you can adjust the gradient range by modifying the start and end values.
+- **Randomize Vertex Colors**: Randomize the vertex color value in one channel on selected mesh objects. You can also "normalize" the values, which ensures that all meshes have a unique value offset, fully utilizing the color range. This approach is less organic but can be useful for certain effects.
+- **Bake Texture to Channel**: Bake the texture to the specified channel, using the UV index you chose.
+- **Bake AO to Channel**: Compute an ambient occlusion using Cycles and bake it to the specified vertex color channel. Note that this process can take some time depending on your mesh density. (Currently aware of an issue with multiple meshes, where you need to launch the operation twice for it to apply to all meshes. This is being worked on.)
+- **Switch Channel Data**: This allows you to exchange data between channels. It is useful for tweaking or rearranging your channel usage.
+- **Clear Channel Data**: Clear a specific channel without affecting others. You can clear the channel to 0 or 1.
 
 ### Panel Interface
 
-The addon introduces a custom panel in the **3D View** under the **Tarmunds Addons** tab with the following sections:
-- **Fill Colors**: Choose a fill color and preview/apply the color to the selected mesh.
-- **Gradient Fill**: Select the gradient direction and target color channel, then apply the gradient to the vertices.
-- **Randomize Colors**: Randomize the colors in the chosen channel for selected mesh objects.
+The addon introduces a custom panel in the **3D View** under the **Tarmunds Addons** tab.  
+All the operators are organized into dropdown sections to ease readability.  
+At the top of the panel, you'll find the boolean operator to turn the vertex color preview on or off.
 
 ## Installation
 
-1. Download or clone the repository.
+1. Download the latest version from GitHub or Gumroad.
 2. Open Blender and go to **Edit > Preferences > Add-ons**.
 3. Click **Install**, navigate to the downloaded addon file, and select it.
 4. Enable the addon by checking the box next to **Enhanced Vertex Color Tool** in the **Add-ons** tab.
+5. Enjoy!
 
 ## Usage
 
 - After installation, the **Enhanced Vertex Color Tool** panel can be found in the **3D View > Tarmunds Addons** tab.
-- Select the mesh objects you want to modify, and use the provided operators to fill, apply gradients, or randomize the vertex colors.
-  
-## Custom Properties
-
-- **Vertex Fill Color**: Choose the color to fill for the **Preview Fill** or **Apply Fill** actions.
-- **Gradient Direction**: Choose the direction for applying the gradient (Bottom-Top, Left-Right, Front-Back).
-- **Gradient Target Channel**: Select the color channel (Red, Green, Blue) to apply the gradient to.
-- **Random Target Channel**: Select the color channel (Red, Green, Blue) to randomize.
-
-## Requirements
-
-- Blender 2.80 or higher.
+- Select the mesh objects you want to modify, and use the provided operators. All operators iterate through all selected meshes to streamline your workflow.
 
 ## Credits
 
-- **Author**: Tarmunds
+- **Author**: Tarmunds - Kostia Perry
 
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
-
----
-
-This README provides a concise overview of the tool's features, installation steps, and usage instructions. It will help users understand the capabilities of your addon and how to get started.
