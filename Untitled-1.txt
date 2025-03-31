@@ -1,0 +1,1 @@
+(( sin( frac(( time*speed)+gradient)))+2)/2
