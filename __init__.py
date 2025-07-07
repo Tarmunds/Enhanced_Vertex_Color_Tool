@@ -2,7 +2,7 @@ bl_info = {
     "name": "Enhanced Vertex Color Tool",
     "blender": (4, 0, 0),
     "category": "Object",
-    "version": (2, 5, 0),
+    "version": (2, 7, 5),
     "author": "Tarmunds",
     "description": "Advanced vertex color tools: fill, gradients, randomization, baked AO in vertex color, bake texture in vertex color, and switch/clear channels.",
     "doc_url": "https://tarmunds.gumroad.com/l/EnhancedVertexColorTool",
@@ -19,6 +19,7 @@ from . import VCT_Pannel
 
 
 def register_properties():
+    bpy.types.Scene.vct_settings = bpy.props.PointerProperty(type=VCT_Operator.VCT_GradientSettings)
     bpy.types.Scene.show_fill_colors = bpy.props.BoolProperty(
         name="Show Fill Colors",
         default=False,
@@ -38,6 +39,11 @@ def register_properties():
         name="Show Gradient Range",
         default=False,
         description="Expand or collapse the Gradient Range section"
+    )
+    bpy.types.Scene.show_radial_fill = bpy.props.BoolProperty(
+        name="Show Radial Fill",
+        default=False,
+        description="Expand or collapse the Radial Fill section"
     )
     bpy.types.Scene.show_randomize_colors = bpy.props.BoolProperty(
         name="Show Randomize Colors",
@@ -99,6 +105,8 @@ classes = [
     VCT_Operator.VCT_VertexColorClearChannelOperator,
     VCT_Operator.VCT_FlipFlopShading,
     VCT_Pannel.VCT_VertexColorFillPanel,
+    VCT_Operator.VCT_GradientSettings,
+    VCT_Operator.VCT_OT_ApplyGradient
 ]
 
 def register():
@@ -150,6 +158,22 @@ def register():
         description="Use world space coordinates instead of local space for the gradient",
         default=False
     )
+    bpy.types.Scene.radial_target_channel = bpy.props.EnumProperty(
+        name="Radial Gradient Target Channel",
+        items=[
+            ('RED', "Red", "Apply gradient to Red channel"),
+            ('GREEN', "Green", "Apply gradient to Green channel"),
+            ('BLUE', "Blue", "Apply gradient to Blue channel")
+        ],
+        default='RED'
+    )
+
+    bpy.types.Scene.radial_inverse = bpy.props.BoolProperty(
+        name="Inverse Radial Gradient",
+        description="Invert the Radial gradient direction",
+        default=False
+    )
+
 
     bpy.types.Scene.vertex_fill_alpha = bpy.props.FloatProperty(
         name="Vertex Alpha",
@@ -295,7 +319,8 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
-
+    
+    del bpy.types.Scene.vct_settings
     del bpy.types.Scene.vertex_fill_color
     del bpy.types.Scene.gradient_direction
     del bpy.types.Scene.gradient_target_channel
@@ -317,6 +342,8 @@ def unregister():
     del bpy.types.Scene.vertex_color_clear_channel
     del bpy.types.Scene.gradient_start
     del bpy.types.Scene.gradient_end
+    del bpy.types.Scene.radial_target_channel
+    del bpy.types.Scene.radial_inverse
 
     unregister_properties()
 

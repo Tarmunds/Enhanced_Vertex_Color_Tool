@@ -86,7 +86,25 @@ class VCT_VertexColorFillPanel(bpy.types.Panel):
             if scene.show_gradient_range:
                 box.prop(context.scene, "gradient_start")
                 box.prop(context.scene, "gradient_end")
+        
+        # Radial Fill Section
+        box = layout.box()
+        row = box.row()
+        settings = vct_pannel_settings = context.scene.vct_settings
+        row.prop(scene, "show_radial_fill", text="", icon="LIGHT_POINT", emboss=False)
+        row.label(text="Radial Fill")
+        row.prop(scene, "show_radial_fill", text="", icon="TRIA_DOWN" if scene.show_radial_fill else "TRIA_RIGHT", emboss=False, icon_only=True, invert_checkbox=True)
+        if scene.show_radial_fill:
+            box.prop(settings, "center_mode", text="Direction")
+            if settings.center_mode == 'REFERENCE':
+                box.prop(settings, "reference_object", text="Reference Object")
+            row = box.row()
+            row.prop(scene, "radial_target_channel", expand=True)
+            box.prop(scene, "radial_inverse", text="Inverse Gradient")
+            box.operator("object.vct_apply_gradient", icon='BRUSH_DATA', text="Apply Radial Gradient")
 
+
+            
         # Randomize Colors Section
         box = layout.box()
         row = box.row()

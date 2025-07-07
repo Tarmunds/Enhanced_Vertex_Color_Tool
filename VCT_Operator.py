@@ -1,5 +1,10 @@
 import bpy, random, bmesh, time, numpy as np
 from bpy_extras.io_utils import ImportHelper
+from bpy.props import EnumProperty, PointerProperty, BoolProperty
+from bpy.types import Operator, PropertyGroup
+from mathutils import Vector
+from bpy.types import Operator, Panel
+
 
 def ensure_object_mode(self, context):
     if context.object and context.object.mode != 'OBJECT':
@@ -658,3 +663,101 @@ class VCT_VertexColorClearChannelOperator(bpy.types.Operator):
 
         self.report({'INFO'}, f"Cleared {channel} channel to {self.value} for {affected_objects} object(s).")
         return {'FINISHED'}
+
+
+
+class VCT_GradientSettings(bpy.types.PropertyGroup):
+    center_mode: EnumProperty(
+        name="Gradient Origin",
+        items=[
+            ('CURSOR', "3D Cursor", ""),
+            ('ACTIVE', "Active Object", ""),
+            ('REFERENCE', "Reference Object", ""),
+        ],
+        default='CURSOR'
+    )
+    reference_object: PointerProperty(
+        name="Reference Object",
+        type=bpy.types.Object,
+        poll=lambda self, obj: obj.type == 'MESH'
+    )
+    include_center: BoolProperty(
+        name="Include Center in Radius",
+        description="Ensure the center is considered in the bounding radius",
+        default=True
+    )
+    show_preview: BoolProperty(
+        name="Show Visualizer",
+        description="Draw a 2D preview of the gradient center and radius",
+        default=False
+    )
+
+class VCT_OT_ApplyGradient(Operator):
+    bl_idname = "object.vct_apply_gradient"
+    bl_label = "Apply Radial Gradient"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        apply_radial_gradient(context)
+        self.report({'INFO'}, "Gradient applied to vertex colors.")
+        return {'FINISHED'}
+
+# === GRADIENT APPLICATION ===
+
+def get_gradient_center(context):
+    settings = context.scene.vct_settings
+    if settings.center_mode == 'CURSOR':
+        return context.scene.cursor.location
+    elif settings.center_mode == 'ACTIVE':
+        return context.active_object.matrix_world.translation if context.active_object else Vector()
+    elif settings.center_mode == 'REFERENCE':
+        return settings.reference_object.matrix_world.translation if settings.reference_object else Vector()
+    return Vector()
+
+
+def apply_radial_gradient(context):
+    settings = context.scene.vct_settings
+    center = get_gradient_center(context)
+    include_center = settings.include_center
+
+    mesh_objects = [obj for obj in context.selected_objects if obj.type == 'MESH']
+    if not mesh_objects:
+        return
+
+    all_dists = [
+        (obj.matrix_world @ v.co - center).length
+        for obj in mesh_objects for v in obj.data.vertices
+    ]
+    if include_center:
+        all_dists.append(0.0)
+
+    max_radius = max(all_dists) if all_dists else 1e-6
+
+    # Get user options
+    channel = context.scene.radial_target_channel
+    invert = context.scene.radial_inverse
+
+    for obj in mesh_objects:
+        mesh = obj.data
+        if not mesh.vertex_colors:
+            mesh.vertex_colors.new(name="Col")
+        vcol_layer = mesh.vertex_colors.active
+
+        for poly in mesh.polygons:
+            for loop_idx in poly.loop_indices:
+                v = mesh.vertices[mesh.loops[loop_idx].vertex_index]
+                world_pos = obj.matrix_world @ v.co
+                dist = (world_pos - center).length
+                gradient = 1.0 - min(dist / max_radius, 1.0)
+                if invert:
+                    gradient = 1.0 - gradient
+
+                r, g, b, a = vcol_layer.data[loop_idx].color
+                if channel == 'RED':
+                    vcol_layer.data[loop_idx].color = (gradient, g, b, a)
+                elif channel == 'GREEN':
+                    vcol_layer.data[loop_idx].color = (r, gradient, b, a)
+                elif channel == 'BLUE':
+                    vcol_layer.data[loop_idx].color = (r, g, gradient, a)
+
+        mesh.update()
