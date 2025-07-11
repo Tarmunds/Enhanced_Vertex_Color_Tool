@@ -75,6 +75,12 @@ def register_properties():
         default=False,
         description="Expand or collapse the Clear Channels section"
     )
+    bpy.types.Scene.gradient_use_active_orientation = bpy.props.BoolProperty(
+    name="Use Active Orientation",
+    description="Align global gradient direction to the active object's orientation",
+    default=False
+    )
+
 
 def unregister_properties():
     del bpy.types.Scene.show_fill_colors
@@ -87,6 +93,7 @@ def unregister_properties():
     del bpy.types.Scene.show_bake_texture
     del bpy.types.Scene.show_switch_channels
     del bpy.types.Scene.show_clear_channels
+    del bpy.types.Scene.gradient_use_active_orientation
 
 
 

@@ -79,6 +79,8 @@ class VCT_VertexColorFillPanel(bpy.types.Panel):
             box.prop(scene, "gradient_inverse", text="Inverse Gradient")
             box.prop(scene, "gradient_use_world_space", text="Use World Cordinate")
             box.prop(scene, "gradient_global", text="Global Gradient")
+            if scene.gradient_global:
+                box.prop(scene, "gradient_use_active_orientation", text="Use Active Orientation")
             box.operator("object.vertex_color_gradient_fill", text="Apply Gradient")
             box.prop(scene, "show_gradient_range",
                  icon='TRIA_DOWN' if scene.show_gradient_range else 'TRIA_RIGHT',
@@ -95,7 +97,7 @@ class VCT_VertexColorFillPanel(bpy.types.Panel):
         row.label(text="Radial Fill")
         row.prop(scene, "show_radial_fill", text="", icon="TRIA_DOWN" if scene.show_radial_fill else "TRIA_RIGHT", emboss=False, icon_only=True, invert_checkbox=True)
         if scene.show_radial_fill:
-            box.prop(settings, "center_mode", text="Direction")
+            box.prop(settings, "center_mode", text="Origin")
             if settings.center_mode == 'REFERENCE':
                 box.prop(settings, "reference_object", text="Reference Object")
             row = box.row()

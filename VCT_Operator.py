@@ -80,12 +80,20 @@ class VCT_VertexColorGradientFillOperator(bpy.types.Operator):
         inverse_gradient = context.scene.gradient_inverse
         global_gradient = context.scene.gradient_global
         use_world_space = context.scene.gradient_use_world_space
+        use_active_orientation = context.scene.gradient_use_active_orientation
 
         if not ensure_object_mode(self, context):
             return {'CANCELLED'}
 
         if global_gradient:
-            self.apply_global_gradient(context.selected_objects, direction, target_channel, inverse_gradient, context)
+            self.apply_global_gradient(
+                context.selected_objects,
+                direction,
+                target_channel,
+                inverse_gradient,
+                use_active_orientation,
+                context
+            )
         else:
             for obj in context.selected_objects:
                 if obj.type == 'MESH':
@@ -116,18 +124,24 @@ class VCT_VertexColorGradientFillOperator(bpy.types.Operator):
                 elif target_channel == 'BLUE':
                     vcol_layer.data[loop_idx].color = (r, g, gradient_value, a)
 
-    def apply_global_gradient(self, objects, direction, target_channel, inverse_gradient, context):
+    def apply_global_gradient(self, objects, direction, target_channel, inverse_gradient, use_active_orientation, context):
+        active_obj = context.active_object if use_active_orientation and context.active_object else None
+        transform_matrix = active_obj.matrix_world.to_3x3().normalized().inverted() if active_obj else None
+
         all_coords = []
         for obj in objects:
             if obj.type == 'MESH':
-                all_coords.extend([self.get_global_coordinate(v.index, obj, direction) for v in obj.data.vertices])
+                all_coords.extend([
+                    self.get_global_coordinate(v.index, obj, direction, transform_matrix)
+                    for v in obj.data.vertices
+                ])
 
         if not all_coords:
             return
 
         min_val, max_val = min(all_coords), max(all_coords)
         if max_val == min_val:
-            max_val = min_val + 1e-6  # Prevent division by zero
+            max_val = min_val + 1e-6
 
         for obj in objects:
             if obj.type == 'MESH':
@@ -137,7 +151,7 @@ class VCT_VertexColorGradientFillOperator(bpy.types.Operator):
 
                 for poly in obj.data.polygons:
                     for loop_idx in poly.loop_indices:
-                        coord = self.get_global_coordinate(obj.data.loops[loop_idx].vertex_index, obj, direction)
+                        coord = self.get_global_coordinate(obj.data.loops[loop_idx].vertex_index, obj, direction, transform_matrix)
                         gradient_value = (coord - min_val) / (max_val - min_val)
                         gradient_value = context.scene.gradient_start + gradient_value * (context.scene.gradient_end - context.scene.gradient_start)
                         if inverse_gradient:
@@ -149,6 +163,7 @@ class VCT_VertexColorGradientFillOperator(bpy.types.Operator):
                             vcol_layer.data[loop_idx].color = (r, gradient_value, b, a)
                         elif target_channel == 'BLUE':
                             vcol_layer.data[loop_idx].color = (r, g, gradient_value, a)
+
 
     def get_bounds(self, obj, direction, use_world_space):
         coords = [self.get_coordinate(v.index, obj, direction, use_world_space) for v in obj.data.vertices]
@@ -167,14 +182,18 @@ class VCT_VertexColorGradientFillOperator(bpy.types.Operator):
         elif direction == 'FRONT_BACK':
             return coord.y
 
-    def get_global_coordinate(self, vertex_idx, obj, direction):
+    def get_global_coordinate(self, vertex_idx, obj, direction, transform_matrix=None):
         coord = obj.matrix_world @ obj.data.vertices[vertex_idx].co
+        if transform_matrix:
+            coord = transform_matrix @ coord  # Transformed into active object space
+
         if direction == 'BOTTOM_TOP':
             return coord.z
         elif direction == 'LEFT_RIGHT':
             return coord.x
         elif direction == 'FRONT_BACK':
             return coord.y
+
 
 class VCT_VertexColorRandomizeOperator(bpy.types.Operator):
     bl_idname = "object.vertex_color_randomize"
