@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Zip whole project",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        //  ----  CHANGE THE DESTINATION PATH HERE  ----
+        "Compress-Archive -Path \"${workspaceFolder}\" -DestinationPath \"D:\\GitHub\\VCT_3.zip\" -Force"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
