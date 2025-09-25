@@ -40,9 +40,97 @@ class VCT_ShadeFlat(bpy.types.Operator):
         self.report({'INFO'}, f"Viewport Light Type set to {light_name}")
         return {'FINISHED'}
     
+class VCT_FillColor(bpy.types.Operator):
+    bl_idname = "vct.fill_color"
+    bl_label = "Fill Vertex Color"
+    bl_description = "Fill selected mesh objects with the active vertex color"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        fill_vertex_color(context)
+        return {'FINISHED'}
+    
+class VCT_FillBlack(bpy.types.Operator):
+    bl_idname = "vct.fill_black"
+    bl_label = "Fill Black"
+    bl_description = "Fill selected mesh objects with black vertex color"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        fill_vertex_color(context, overide_color=(0.0, 0.0, 0.0, 1.0))
+        return {'FINISHED'}
+
+class VCT_FillWhite(bpy.types.Operator):
+    bl_idname = "vct.fill_white"
+    bl_label = "Fill White"
+    bl_description = "Fill selected mesh objects with white vertex color"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        fill_vertex_color(context, overide_color=(1.0, 1.0, 1.0, 1.0))
+        return {'FINISHED'}
+    
+class VCT_GradientFill(bpy.types.Operator):
+    bl_idname = "vct.gradient_fill"
+    bl_label = "Gradient Fill"
+    bl_description = "Fill selected mesh objects with a gradient based on the chosen channel"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        fill_gradient(context)
+        return {'FINISHED'}
+
+class VCT_RandomFill(bpy.types.Operator):
+    bl_idname = "vct.random_fill"
+    bl_label = "Random Fill"
+    bl_description = "Fill selected mesh objects with random vertex color"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        fill_random(context)
+        return {'FINISHED'}
+
+class VCT_ChannelInspect(bpy.types.Operator):
+    bl_idname = "vct.inspect_color"
+    bl_label = "Inspect Vertex Color"
+    bl_description = "Inspect the vertex color of selected mesh objects"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        return inspect_color_channel(context)
+
+class VCT_DiscardInspectChanges(bpy.types.Operator):
+    bl_idname = "vct.discard_inspect_changes"
+    bl_label = "Discard Inspect Changes"
+    bl_description = "Discard changes made during inspect mode and revert to original vertex colors"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        remove_inspector(context, keep_data=False)
+        return {'FINISHED'}
+
+class VCT_FillValue(bpy.types.Operator):
+    bl_idname = "vct.fill_value"
+    bl_label = "Fill Value"
+    bl_description = "Fill selected mesh objects with a specific value on the inspect channel"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+    def execute(self, context):
+        value = (context.scene.vct_properties.fill_value,)*4
+        return fill_vertex_color(context, overide_color=value)
+
 _classes = (
     VCT_SeeVcolor,
     VCT_ShadeFlat,
+    VCT_FillColor,
+    VCT_FillBlack,
+    VCT_FillWhite,
+    VCT_GradientFill,
+    VCT_RandomFill,
+    VCT_ChannelInspect,
+    VCT_FillValue,
+    VCT_DiscardInspectChanges,
 )
 
 def register():
