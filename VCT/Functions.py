@@ -55,13 +55,26 @@ def fetch_color_layer(bm, mesh):
     mesh.data.color_attributes.active_color = mesh.data.color_attributes["Col"] if mesh.data.color_attributes.get("Col") else mesh.data.color_attributes.new(name="Col", type='BYTE_COLOR', domain='CORNER')
     return color_layer
 
-def value_to_channel(value, Echannel, current_color):
-    return {
-        'R': (value, current_color.y, current_color.z, current_color.w),
-        'G': (current_color.x, value, current_color.z, current_color.w),
-        'B': (current_color.x, current_color.y, value, current_color.w),
-        'A': (current_color.x, current_color.y, current_color.z, value),
-    }[Echannel]
+def fetch_relevant_color_layer(bm, mesh):
+    VCTproperties = bpy.context.scene.vct_properties
+    if VCTproperties.inspect_enable:
+        if mesh in Inspect_meshes:
+            return bm.loops.layers.color.get("ChannelChecker")
+        else:
+            return None
+    else:
+        return fetch_color_layer(bm, mesh)
+
+def value_to_channel(value, Echannel, current_color, fillgrayscale=False):
+    if fillgrayscale:
+        return (value, value, value, 1.0)
+    else:
+        return {
+            'R': (value, current_color.y, current_color.z, current_color.w),
+            'G': (current_color.x, value, current_color.z, current_color.w),
+            'B': (current_color.x, current_color.y, value, current_color.w),
+            'A': (current_color.x, current_color.y, current_color.z, value),
+        }[Echannel]
 
 #---- Main Functions ----#
 
@@ -111,13 +124,25 @@ def fill_gradient(context):
     
     for mesh in meshes:
         bm = bmesh_from_object(context, mesh)
-        color_layer = fetch_color_layer(bm, mesh)
+        if VCTproperties.inspect_enable:
+            if mesh in Inspect_meshes:
+                color_layer = bm.loops.layers.color.get("ChannelChecker")
+            else:
+                return {'CANCELLED'}
+        else:
+            color_layer = fetch_color_layer(bm, mesh)
         
         if VCTproperties.gradient_WS_direction:
             MeshRotation = mesh.matrix_world.to_3x3().normalized()
-            direction = (MeshRotation.inverted() @ mathutils.Vector(direction)).normalized()
+            LocalDirection = (MeshRotation.inverted() @ mathutils.Vector(direction)).normalized()
+        else:
+            LocalDirection = mathutils.Vector(direction)
 
-        coords_local = [v.co.dot(direction) for v in bm.verts]
+        if not context.mode == 'EDIT_MESH':
+            coords_local = [v.co.dot(LocalDirection) for v in bm.verts]
+        else:
+            coords_local = [v.co.dot(LocalDirection) for v in bm.verts if v.select or not VCTproperties.affect_only_selected]
+
         min_coord = min(coords_local)
         max_coord = max(coords_local) or (min_coord + 1e-6)
 
@@ -126,11 +151,18 @@ def fill_gradient(context):
 
         for face in bm.faces:
             for loop in face.loops:
-                projection_value = loop.vert.co.dot(direction)
+                projection_value = loop.vert.co.dot(LocalDirection)
                 value = (projection_value - min_coord) / (max_coord - min_coord)
-                loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer])
+
+                if context.mode == 'EDIT_MESH' and VCTproperties.affect_only_selected:
+                    if loop.vert.select:
+                        loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+                else:
+                    loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+
     
         bmesh_to_object(context, bm, mesh)
+    return {'FINISHED'}
 
 
 
@@ -140,9 +172,19 @@ def fill_random(context):
     meshes = fetch_mesh_in_context(context)
     if not meshes: 
         return {'CANCELLED'}
+    
+    #final writing to channel function
+    def write_random_value_to_loops(loops, rand_value):
+        for loop in loops:
+            if context.mode == 'EDIT_MESH':
+                if loop.vert.select or not VCTproperties.affect_only_selected:
+                    loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+            else:
+                loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
 
     random_per_connected = VCTproperties.random_per_connected
-    if not random_per_connected:
+    random_per_uv_island = VCTproperties.random_per_uv_island
+    if not random_per_connected and not random_per_uv_island:
         random_values = [0.0] * len(meshes)
 
         if VCTproperties.random_normalize:
@@ -152,26 +194,20 @@ def fill_random(context):
 
         for mesh, rand_value in zip(meshes, random_values):
             bm = bmesh_from_object(context, mesh)
-            color_layer = fetch_color_layer(bm, mesh)
+            color_layer = fetch_relevant_color_layer(bm, mesh)
             if VCTproperties.random_normalize:
                 pass  # Use precomputed normalized value
             else:
                 rand_value = random.random()
 
             for face in bm.faces:
-                for loop in face.loops:
-                    if context.mode == 'EDIT_MESH':
-                        if loop.vert.select or not VCTproperties.affect_only_selected:
-                            loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer])
-                    else:
-                        loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer])
-
+                write_random_value_to_loops(face.loops, rand_value)
             bmesh_to_object(context, bm, mesh)
         return {'FINISHED'}
-    else:
+    if random_per_connected:
         for mesh in meshes:
             bm = bmesh_from_object(context, mesh)
-            color_layer = fetch_color_layer(bm, mesh)
+            color_layer = fetch_relevant_color_layer(bm, mesh)
             connected_loops_list = fetch_connected_loops(bm)
             random_values = [0.0] * len(connected_loops_list)
 
@@ -185,15 +221,30 @@ def fill_random(context):
                     pass  # Use precomputed normalized value
                 else:
                     rand_value = random.random()
-                
-                for loop in loops:
-                    if context.mode == 'EDIT_MESH':
-                        if loop.vert.select or not VCTproperties.affect_only_selected:
-                            loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer])
-                    else:
-                        loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer])
+                write_random_value_to_loops(loops, rand_value)
             bmesh_to_object(context, bm, mesh)
         return {'FINISHED'}
+    if random_per_uv_island:
+        for mesh in meshes:
+            bm = bmesh_from_object(context, mesh)
+            color_layer = fetch_relevant_color_layer(bm, mesh)
+            uv_island_loops_list = fetch_uv_island_loops(bm)
+            random_values = [0.0] * len(uv_island_loops_list)
+
+            if VCTproperties.random_normalize:
+                step = 1.0 / max(len(uv_island_loops_list) - 1, 1)
+                random_values = [i * step for i in range(len(uv_island_loops_list))]
+                random.shuffle(random_values)
+            
+            for loops, rand_value in zip(uv_island_loops_list, random_values):
+                if VCTproperties.random_normalize:
+                    pass  # Use precomputed normalized value
+                else:
+                    rand_value = random.random()
+                write_random_value_to_loops(loops, rand_value)
+            bmesh_to_object(context, bm, mesh)
+        return {'FINISHED'}
+    
 
 
 Inspect_meshes = set() #container of meshes being inspected
@@ -250,7 +301,7 @@ def remove_inspector(context, keep_data=True):
             for face in bm.faces:
                 for loop in face.loops:
                     value = loop[check_color_layer].x  # Since it's grayscale, R=G=B
-                    loop[color_layer] = value_to_channel(value, VCTproperties.inspect_channel, loop[color_layer])
+                    loop[color_layer] = value_to_channel(value, VCTproperties.inspect_channel, loop[color_layer], fillgrayscale=False)
             
             bm.loops.layers.color.remove(bm.loops.layers.color.get("ChannelChecker"))
             bmesh_to_object(context, bm, mesh)
@@ -306,7 +357,7 @@ def fetch_connected_loops(bm):
 
     return loops_list
 
-'''
+
 def fetch_uv_island_loops(bm, uv_layer=None, eps=1e-6):
     if uv_layer is None:
         uv_layer = bm.loops.layers.uv.active
@@ -385,4 +436,4 @@ def fetch_uv_island_loops(bm, uv_layer=None, eps=1e-6):
         loops_list.append(component)
 
     return loops_list
-'''
+

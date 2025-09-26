@@ -1,6 +1,11 @@
 import bpy
 from .Functions import fetch_view_lighting, fetch_view_color_type
 
+def go_to_row(layout, *, scale_y=1.2, align=False):
+    row = layout.row(align=align)
+    row.scale_y = scale_y
+    return row
+
 class VCT_Panel(bpy.types.Panel):
     bl_label = "Enhanced Vertex Color Tool"
     bl_idname = "VCT_panel"
@@ -40,7 +45,10 @@ class VCT_Panel(bpy.types.Panel):
             row.scale_y = 1.5
             row.operator("vct.fill_color", text="Fill Vertex Color", icon='BRUSH_DATA')
             layout.prop(vct_props, "fill_color", text="Fill Color")
-            layout.prop(vct_props, "affect_only_selected", text="Affect Only Selected")
+
+            row = go_to_row(layout)
+            row.prop(vct_props, "affect_only_selected", text="Affect Only Selection - Edit Mode Only", toggle=True, icon='RESTRICT_SELECT_OFF' if vct_props.affect_only_selected else 'RESTRICT_SELECT_ON')
+            
             row = layout.row()
             row.scale_y = 1.5
             row.operator("vct.fill_black", text="Fill Black", icon='X')
@@ -58,7 +66,8 @@ class VCT_Panel(bpy.types.Panel):
             layout.prop(vct_props, "random_channel", text="Random Channel", expand=True)
             row = layout.row(align=False)
             row.prop(vct_props, "random_normalize", text="Normalize Random Values", toggle=True)
-            row.prop(vct_props, "random_per_connected", text="Per Connected Mesh", toggle=True)
+            row.prop(vct_props, "random_per_connected", text="Per Connected", toggle=True)
+            row.prop(vct_props, "random_per_uv_island", text="Per UV Island", toggle=True)
             layout.separator()
             row = layout.row()
             row.scale_y = 1.5
@@ -69,13 +78,33 @@ class VCT_Panel(bpy.types.Panel):
         else:
             current_channel = {'R': 'Red', 'G': 'Green', 'B': 'Blue', 'A': 'Alpha'}[vct_props.inspect_channel]
             layout.label(text=f"Inspecting {current_channel} Channel", icon='INFO')
-            row = layout.row()
-            row.scale_y = 1.5
+            row = go_to_row(layout)
             row.operator("vct.inspect_color", text="Accept Change", icon='CHECKMARK')
             row.operator("vct.discard_inspect_changes", text="Close Inspector", icon='X')
-            layout.prop(vct_props, "affect_only_selected", text="Affect Only Selected")
-            layout.operator("vct.fill_value", text="Fill Value", icon='BRUSH_DATA')
-            layout.prop(vct_props, "fill_value", text="Fill Value")
+
+            row = go_to_row(layout)
+            row.prop(vct_props, "affect_only_selected", text="Affect Only Selection - Edit Mode Only", toggle=True, icon='RESTRICT_SELECT_OFF' if vct_props.affect_only_selected else 'RESTRICT_SELECT_ON')
+
+            row = go_to_row(layout, align=True)
+            row.operator("vct.inspect_fill_value", text="Fill Value", icon='BRUSH_DATA')
+            row.prop(vct_props, "fill_value", text="Fill Value")
+
+            row = go_to_row(layout)
+            row.operator("vct.random_fill", text="Random Fill", icon='BRUSH_DATA')
+            row = go_to_row(layout, scale_y=1.0)
+            row.prop(vct_props, "random_normalize", text="Normalize Random Values", toggle=True)
+            row.prop(vct_props, "random_per_connected", text="Per Connected", toggle=True)
+            row.prop(vct_props, "random_per_uv_island", text="Per UV Island", toggle=True)
+
+            row = go_to_row(layout)
+            row.separator()
+
+            row = go_to_row(layout)
+            row.operator("vct.gradient_fill", text="Gradient Fill", icon='BRUSH_DATA')
+            row = go_to_row(layout, scale_y=1.0)
+            row.prop(vct_props, "gradient_direction", text="Gradient Direction", expand=True)
+            row.prop(vct_props, "gradient_WS_direction", text="World Space Direction", toggle=True)
+
 
     def draw_header_preset(self, context):
         layout = self.layout

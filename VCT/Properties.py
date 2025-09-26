@@ -65,6 +65,10 @@ class VCTProperties(PropertyGroup):
         name="Random Per Connected Component",
         default=False
     )
+    random_per_uv_island: BoolProperty(
+        name="Random Per UV Island",
+        default=False
+    )
     inspect_enable: BoolProperty(
         name="Inspect Mode",
         default=False

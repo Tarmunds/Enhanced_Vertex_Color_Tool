@@ -102,18 +102,19 @@ class VCT_DiscardInspectChanges(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        return remove_inspector(context, keep_data=False)
+        remove_inspector(context, keep_data=False)
+        return {'FINISHED'}
 
-class VCT_FillValue(bpy.types.Operator):
-    bl_idname = "vct.fill_value"
+class VCT_InspectFillValue(bpy.types.Operator):
+    bl_idname = "vct.inspect_fill_value"
     bl_label = "Fill Value"
     bl_description = "Fill selected mesh objects with a specific value on the inspect channel"
     bl_options = {'REGISTER', 'UNDO'}
 
-
     def execute(self, context):
         value = (context.scene.vct_properties.fill_value,)*4
         return fill_vertex_color(context, overide_color=value)
+
     
 
 _classes = (
@@ -125,8 +126,8 @@ _classes = (
     VCT_GradientFill,
     VCT_RandomFill,
     VCT_ChannelInspect,
-    VCT_FillValue,
     VCT_DiscardInspectChanges,
+    VCT_InspectFillValue,
 )
 
 def register():
