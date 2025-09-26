@@ -437,3 +437,59 @@ def fetch_uv_island_loops(bm, uv_layer=None, eps=1e-6):
 
     return loops_list
 
+def clear_channel(context, value):
+    VCTproperties = context.scene.vct_properties
+    Echannel = VCTproperties.clear_channel
+    meshes = fetch_mesh_in_context(context)
+    if not meshes:
+        return {'CANCELLED'}
+    for mesh in meshes:
+        bm = bmesh_from_object(context, mesh)
+        color_layer = fetch_relevant_color_layer(bm, mesh)
+
+        for face in bm.faces:
+            for loop in face.loops:
+                if context.mode == 'EDIT_MESH':
+                    if loop.vert.select or not VCTproperties.affect_only_selected:
+                        loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+                else:
+                    loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+        bmesh_to_object(context, bm, mesh)
+    return {'FINISHED'}
+
+def switch_channel(context):
+    VCTproperties = context.scene.vct_properties
+    Echannel_source = VCTproperties.switch_source_channel
+    Echannel_target = VCTproperties.switch_target_channel
+    if Echannel_source == Echannel_target:
+        return {'CANCELLED'}
+    
+    def switch_values(loop_color):
+        # coerce to a plain tuple
+        try:
+            r, g, b, a = loop_color.x, loop_color.y, loop_color.z, loop_color.w
+        except AttributeError:
+            r, g, b, a = loop_color
+
+        vals = {'R': r, 'G': g, 'B': b, 'A': a}
+        vals[Echannel_source], vals[Echannel_target] = vals[Echannel_target], vals[Echannel_source]
+        return (vals['R'], vals['G'], vals['B'], vals['A'])
+
+    meshes = fetch_mesh_in_context(context)
+    if not meshes:
+        return {'CANCELLED'}
+    for mesh in meshes:
+        bm = bmesh_from_object(context, mesh)
+        color_layer = fetch_relevant_color_layer(bm, mesh)
+
+        for face in bm.faces:
+            for loop in face.loops:
+                if context.mode == 'EDIT_MESH':
+                    if loop.vert.select or not VCTproperties.affect_only_selected:
+                        loop[color_layer] = switch_values(loop[color_layer])
+                else:
+                    loop[color_layer] = switch_values(loop[color_layer])
+
+        bmesh_to_object(context, bm, mesh)
+    return {'FINISHED'}
+

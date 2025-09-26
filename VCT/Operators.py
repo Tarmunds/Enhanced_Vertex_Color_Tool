@@ -115,7 +115,26 @@ class VCT_InspectFillValue(bpy.types.Operator):
         value = (context.scene.vct_properties.fill_value,)*4
         return fill_vertex_color(context, overide_color=value)
 
-    
+class VCT_ClearChannel(bpy.types.Operator):
+    bl_idname = "vct.clear_channel"
+    bl_label = "Clear Channel"
+    bl_description = "Clear the selected channel to zero in the vertex colors of selected mesh objects"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    value: bpy.props.FloatProperty(name="Value", default=0.0)
+
+    def execute(self, context):
+        return clear_channel(context, value=self.value)
+
+class VCT_SwitchChannel(bpy.types.Operator):
+    bl_idname = "vct.switch_channel"
+    bl_label = "Switch Channel"
+    bl_description = "Switch the source channel to the target channel in the vertex colors of selected mesh objects"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        return switch_channel(context)
+
 
 _classes = (
     VCT_SeeVcolor,
@@ -128,6 +147,8 @@ _classes = (
     VCT_ChannelInspect,
     VCT_DiscardInspectChanges,
     VCT_InspectFillValue,
+    VCT_ClearChannel,
+    VCT_SwitchChannel,
 )
 
 def register():

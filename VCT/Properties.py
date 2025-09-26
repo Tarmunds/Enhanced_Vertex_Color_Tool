@@ -2,6 +2,18 @@ import bpy
 from bpy.props import (BoolProperty, FloatVectorProperty, EnumProperty, PointerProperty, IntProperty, StringProperty, FloatProperty)
 from bpy.types import PropertyGroup
 
+Echannel_source = [
+            ('R', "Red", "Red Channel"),
+            ('G', "Green", "Green Channel"),
+            ('B', "Blue", "Blue Channel"),
+            ('A', "Alpha", "Alpha Channel"),
+        ]
+Echannel_axis = [
+            ('X', "X-Axis", "X-Axis"),
+            ('Y', "Y-Axis", "Y-Axis"),
+            ('Z', "Z-Axis", "Z-Axis"),
+        ]
+
 class VCTProperties(PropertyGroup):
     fill_color: FloatVectorProperty(
         name="Fill Color",
@@ -22,21 +34,12 @@ class VCTProperties(PropertyGroup):
     )
     gradient_channel: EnumProperty(
         name="Gradient Channel",
-        items=[
-            ('R', "Red", "Red Channel"),
-            ('G', "Green", "Green Channel"),
-            ('B', "Blue", "Blue Channel"),
-            ('A', "Alpha", "Alpha Channel"),
-        ],
+        items=Echannel_source,
         default='R'
     )
     gradient_direction: EnumProperty(
         name="Gradient Direction",
-        items=[
-            ('X', "X-Axis", "X-Axis"),
-            ('Y', "Y-Axis", "Y-Axis"),
-            ('Z', "Z-Axis", "Z-Axis"),
-        ],
+        items=Echannel_axis,
         default='Z'
     )
     gradient_WS_direction: BoolProperty(
@@ -49,12 +52,7 @@ class VCTProperties(PropertyGroup):
     )
     random_channel: EnumProperty(
         name="Random Channel",
-        items=[
-            ('R', "Red", "Red Channel"),
-            ('G', "Green", "Green Channel"),
-            ('B', "Blue", "Blue Channel"),
-            ('A', "Alpha", "Alpha Channel"),
-        ],
+        items=Echannel_source,
         default='R'
     )
     random_normalize: BoolProperty(
@@ -75,13 +73,23 @@ class VCTProperties(PropertyGroup):
     )
     inspect_channel: EnumProperty(
         name="Inspect Channel",
-        items=[
-            ('R', "Red", "Red Channel"),
-            ('G', "Green", "Green Channel"),
-            ('B', "Blue", "Blue Channel"),
-            ('A', "Alpha", "Alpha Channel"),
-        ],
+        items=Echannel_source,
         default='R'
+    )
+    clear_channel: EnumProperty(
+        name="Clear Channel",
+        items=Echannel_source,
+        default='R'
+    )
+    switch_source_channel: EnumProperty(
+        name="Switch Source Channel",
+        items=Echannel_source,
+        default='R'
+    )
+    switch_target_channel: EnumProperty(
+        name="Switch Target Channel",
+        items=Echannel_source,
+        default='G'
     )
 
 

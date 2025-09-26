@@ -73,6 +73,20 @@ class VCT_Panel(bpy.types.Panel):
             row.scale_y = 1.5
             row.operator("vct.inspect_color", text="Inspect Vertex Color", icon='EYEDROPPER')
             layout.prop(vct_props, "inspect_channel", text="Inspect Channel", expand=True)
+            row = go_to_row(layout)
+            row.operator("vct.clear_channel", text="Clear to 0", icon='X').value = 0.0
+            row.operator("vct.clear_channel", text="Clear to 1", icon='X').value = 1.0
+            layout.prop(vct_props, "clear_channel", text="Clear Channel", expand=True)
+            layout.separator()
+
+            row = go_to_row(layout)
+            row.operator("vct.switch_channel", text="Switch Channels", icon='ARROW_LEFTRIGHT')
+            layout.label(text="(Swaps the source and target channels for Gradient and Random fills)")
+            row = go_to_row(layout, scale_y=1.0)
+            row.prop(vct_props, "switch_source_channel", text="Source Channel", expand=True)
+            layout.label(text="(Swaps the source and target channels for Gradient and Random fills)")
+            row = go_to_row(layout, scale_y=1.0)
+            row.prop(vct_props, "switch_target_channel", text="Target Channel", expand=True)
 
         #special pannel when inspecting    
         else:
@@ -104,6 +118,10 @@ class VCT_Panel(bpy.types.Panel):
             row = go_to_row(layout, scale_y=1.0)
             row.prop(vct_props, "gradient_direction", text="Gradient Direction", expand=True)
             row.prop(vct_props, "gradient_WS_direction", text="World Space Direction", toggle=True)
+
+            row.operator("vct.clear_channel", text="Clear to 0", icon='X').value = 0.0
+            row.operator("vct.clear_channel", text="Clear to 1", icon='X').value = 1.0
+            layout.prop(vct_props, "clear_channel", text="Clear Channel", expand=True)
 
 
     def draw_header_preset(self, context):
