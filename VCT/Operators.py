@@ -67,7 +67,16 @@ class VCT_FillWhite(bpy.types.Operator):
 
     def execute(self, context):
         return fill_vertex_color(context, overide_color=(1.0, 1.0, 1.0, 1.0))
-    
+
+class VCT_Fill1Channel(bpy.types.Operator):
+    bl_idname = "vct.fill_1channel"
+    bl_label = "Fill 1 Channel"
+    bl_description = "Fill selected mesh objects with the active 1 channel color"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        return fill_channel(context)
+
 class VCT_GradientFill(bpy.types.Operator):
     bl_idname = "vct.gradient_fill"
     bl_label = "Gradient Fill"
@@ -149,6 +158,7 @@ _classes = (
     VCT_InspectFillValue,
     VCT_ClearChannel,
     VCT_SwitchChannel,
+    VCT_Fill1Channel,
 )
 
 def register():

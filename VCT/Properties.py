@@ -28,6 +28,17 @@ class VCTProperties(PropertyGroup):
         min=0.0,
         max=1.0
     )
+    fill_1channel_value: FloatProperty(
+        name="Fill Value",
+        default=1.0,
+        min=0.0,
+        max=1.0
+    )
+    fill_1channel: EnumProperty(
+        name="Fill Channel",
+        items=Echannel_source,
+        default='R'
+    )
     affect_only_selected: BoolProperty(
         name="Affect Only Selected",
         default=True
@@ -46,8 +57,12 @@ class VCTProperties(PropertyGroup):
         name="World Space Direction",
         default=False
     )
-    gradient_only_selected: BoolProperty(
-        name="Only Affect Selected",
+    gradient_global: BoolProperty(
+        name="Global Direction",
+        default=False
+    )
+    gradient_direction_inherit_from_active: BoolProperty(
+        name="Inherit From Active",
         default=False
     )
     random_channel: EnumProperty(
@@ -90,6 +105,26 @@ class VCTProperties(PropertyGroup):
         name="Switch Target Channel",
         items=Echannel_source,
         default='G'
+    )
+    Bshow_fill_color: BoolProperty(
+        name="Show Fill Color",
+        default=False
+    )
+    Bshow_gradient: BoolProperty(
+        name="Show Gradient Options",
+        default=False
+    )
+    Bshow_random: BoolProperty(
+        name="Show Random Options",
+        default=False
+    )
+    Bshow_clear: BoolProperty(
+        name="Show Clear Options",
+        default=False
+    )
+    Bshow_switch: BoolProperty(
+        name="Show Switch Options",
+        default=False
     )
 
 

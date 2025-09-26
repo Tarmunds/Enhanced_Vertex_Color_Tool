@@ -104,25 +104,78 @@ def fill_vertex_color(context, overide_color=None):
                     loop[color_layer] = color
 
         bmesh_to_object(context, bm, mesh)
+    return {'FINISHED'}
+
+def fill_channel(context):
+    VCTproperties = context.scene.vct_properties
+    Echannel = VCTproperties.fill_1channel
+    value = VCTproperties.fill_1channel_value
+    meshes = fetch_mesh_in_context(context)
+    if not meshes: 
+        return {'CANCELLED'}
+    for mesh in meshes:
+        bm = bmesh_from_object(context, mesh)
+        color_layer = fetch_relevant_color_layer(bm, mesh)
+
+        for face in bm.faces:
+            for loop in face.loops:
+                if context.mode == 'EDIT_MESH':
+                    if loop.vert.select or not VCTproperties.affect_only_selected:
+                        loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+                else:
+                    loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+        bmesh_to_object(context, bm, mesh)
 
     return {'FINISHED'}
 
 def fill_gradient(context):
     VCTproperties = context.scene.vct_properties
     Echannel = VCTproperties.gradient_channel
-
+    use_global = VCTproperties.gradient_global
     Edirection = VCTproperties.gradient_direction
     direction = {
         'X': (1, 0, 0),
         'Y': (0, 1, 0),
         'Z': (0, 0, 1)
     }[Edirection]
-
     meshes = fetch_mesh_in_context(context)
     if not meshes: 
         return {'CANCELLED'}
-    
+
+    if use_global:  # case using global gradient
+
+        if VCTproperties.gradient_WS_direction:
+            # Always use pure world axis when WS mode is on
+            worldDirection = mathutils.Vector(direction)
+        elif VCTproperties.gradient_direction_inherit_from_active and context.active_object:
+            R_active = context.active_object.matrix_world.to_3x3().normalized()
+            worldDirection = (R_active @ mathutils.Vector(direction)).normalized()
+        else:
+            worldDirection = mathutils.Vector(direction)
+
+        global_min = float('inf')
+        global_max = float('-inf')
+
+        # Scan all meshes to find global min/max projections in WORLD space
+        for mesh in meshes:
+            bm = bmesh_from_object(context, mesh)
+
+            if context.mode == 'EDIT_MESH':
+                verts_iter = (v for v in bm.verts if v.select or not VCTproperties.affect_only_selected)
+            else:
+                verts_iter = bm.verts
+
+            mw = mesh.matrix_world
+            for v in verts_iter:
+                proj = (mw @ v.co).dot(worldDirection)
+                if proj < global_min: global_min = proj
+                if proj > global_max: global_max = proj
+
+        if not (global_max > global_min):
+            global_max = global_min + 1e-6
+      
     for mesh in meshes:
+        # get bm mesh and loop color layer
         bm = bmesh_from_object(context, mesh)
         if VCTproperties.inspect_enable:
             if mesh in Inspect_meshes:
@@ -132,37 +185,61 @@ def fill_gradient(context):
         else:
             color_layer = fetch_color_layer(bm, mesh)
         
-        if VCTproperties.gradient_WS_direction:
-            MeshRotation = mesh.matrix_world.to_3x3().normalized()
-            LocalDirection = (MeshRotation.inverted() @ mathutils.Vector(direction)).normalized()
-        else:
-            LocalDirection = mathutils.Vector(direction)
-
-        if not context.mode == 'EDIT_MESH':
-            coords_local = [v.co.dot(LocalDirection) for v in bm.verts]
-        else:
-            coords_local = [v.co.dot(LocalDirection) for v in bm.verts if v.select or not VCTproperties.affect_only_selected]
-
-        min_coord = min(coords_local)
-        max_coord = max(coords_local) or (min_coord + 1e-6)
-
-        if min_coord == max_coord:
-            max_coord += 1e-6  # Prevent division by zero
-
-        for face in bm.faces:
-            for loop in face.loops:
-                projection_value = loop.vert.co.dot(LocalDirection)
-                value = (projection_value - min_coord) / (max_coord - min_coord)
-
-                if context.mode == 'EDIT_MESH' and VCTproperties.affect_only_selected:
-                    if loop.vert.select:
-                        loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
-                else:
+        if use_global:
+            mw = mesh.matrix_world
+            for face in bm.faces:
+                for loop in face.loops:
+                    if context.mode == 'EDIT_MESH' and VCTproperties.affect_only_selected and not loop.vert.select:
+                        continue
+                    projection_value = (mw @ loop.vert.co).dot(worldDirection)
+                    value = (projection_value - global_min) / (global_max - global_min)
                     loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+        else:
+            # calculate local direction if needed
+            if VCTproperties.gradient_WS_direction:
+                MeshRotation = mesh.matrix_world.to_3x3().normalized()
+                LocalDirection = (MeshRotation.inverted() @ mathutils.Vector(direction)).normalized()
 
-    
+            elif VCTproperties.gradient_direction_inherit_from_active and context.active_object:
+                R_active = context.active_object.matrix_world.to_3x3().normalized()
+                R_mesh_inv = mesh.matrix_world.to_3x3().normalized().inverted()
+                D_world = (R_active @ mathutils.Vector(direction)).normalized()
+                LocalDirection = (R_mesh_inv @ D_world).normalized()
+
+            else:
+                LocalDirection = mathutils.Vector(direction)
+
+            # gather all vertex coordinates in the chosen direction
+            if not context.mode == 'EDIT_MESH':
+                coords_local = [v.co.dot(LocalDirection) for v in bm.verts]
+            else:
+                coords_local = [v.co.dot(LocalDirection) for v in bm.verts if v.select or not VCTproperties.affect_only_selected]
+
+            if not coords_local:
+                bmesh_to_object(context, bm, mesh)
+                continue
+
+            min_coord = min(coords_local)
+            max_coord = max(coords_local) or (min_coord + 1e-6)
+
+            if min_coord == max_coord:
+                max_coord += 1e-6  # Prevent division by zero
+
+            # fill gradient
+            for face in bm.faces:
+                for loop in face.loops:
+                    projection_value = loop.vert.co.dot(LocalDirection)
+                    value = (projection_value - min_coord) / (max_coord - min_coord)
+
+                    if context.mode == 'EDIT_MESH' and VCTproperties.affect_only_selected:
+                        if loop.vert.select:
+                            loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+                    else:
+                        loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+
         bmesh_to_object(context, bm, mesh)
     return {'FINISHED'}
+
 
 
 
