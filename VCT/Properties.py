@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import (BoolProperty, FloatVectorProperty, EnumProperty, PointerProperty, IntProperty, StringProperty)
+from bpy.props import (BoolProperty, FloatVectorProperty, EnumProperty, PointerProperty, IntProperty, StringProperty, FloatProperty)
 from bpy.types import PropertyGroup
 
 class VCTProperties(PropertyGroup):
@@ -59,6 +59,10 @@ class VCTProperties(PropertyGroup):
     )
     random_normalize: BoolProperty(
         name="Normalize Random Values",
+        default=False
+    )
+    random_per_connected: BoolProperty(
+        name="Random Per Connected Component",
         default=False
     )
     inspect_enable: BoolProperty(

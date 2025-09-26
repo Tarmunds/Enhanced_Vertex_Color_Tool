@@ -138,33 +138,62 @@ def fill_random(context):
     VCTproperties = context.scene.vct_properties
     Echannel = VCTproperties.random_channel
     meshes = fetch_mesh_in_context(context)
-    random_values = [0.0] * len(meshes)
     if not meshes: 
         return {'CANCELLED'}
-    
-    if VCTproperties.random_normalize:
-        step = 1.0 / max(len(meshes) - 1, 1)
-        random_values = [i * step for i in range(len(meshes))]
-        random.shuffle(random_values)
 
-    for mesh, rand_value in zip(meshes, random_values):
-        bm = bmesh_from_object(context, mesh)
-        color_layer = fetch_color_layer(bm, mesh)
+    random_per_connected = VCTproperties.random_per_connected
+    if not random_per_connected:
+        random_values = [0.0] * len(meshes)
+
         if VCTproperties.random_normalize:
-            pass  # Use precomputed normalized value
-        else:
-            rand_value = random.random()
+            step = 1.0 / max(len(meshes) - 1, 1)
+            random_values = [i * step for i in range(len(meshes))]
+            random.shuffle(random_values)
 
-        for face in bm.faces:
-            for loop in face.loops:
-                if context.mode == 'EDIT_MESH':
-                    if loop.vert.select or not VCTproperties.affect_only_selected:
+        for mesh, rand_value in zip(meshes, random_values):
+            bm = bmesh_from_object(context, mesh)
+            color_layer = fetch_color_layer(bm, mesh)
+            if VCTproperties.random_normalize:
+                pass  # Use precomputed normalized value
+            else:
+                rand_value = random.random()
+
+            for face in bm.faces:
+                for loop in face.loops:
+                    if context.mode == 'EDIT_MESH':
+                        if loop.vert.select or not VCTproperties.affect_only_selected:
+                            loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer])
+                    else:
                         loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer])
-                else:
-                    loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer])
 
-        bmesh_to_object(context, bm, mesh)
-    return {'FINISHED'}
+            bmesh_to_object(context, bm, mesh)
+        return {'FINISHED'}
+    else:
+        for mesh in meshes:
+            bm = bmesh_from_object(context, mesh)
+            color_layer = fetch_color_layer(bm, mesh)
+            connected_loops_list = fetch_connected_loops(bm)
+            random_values = [0.0] * len(connected_loops_list)
+
+            if VCTproperties.random_normalize:
+                step = 1.0 / max(len(connected_loops_list) - 1, 1)
+                random_values = [i * step for i in range(len(connected_loops_list))]
+                random.shuffle(random_values)
+            
+            for loops, rand_value in zip(connected_loops_list, random_values):
+                if VCTproperties.random_normalize:
+                    pass  # Use precomputed normalized value
+                else:
+                    rand_value = random.random()
+                
+                for loop in loops:
+                    if context.mode == 'EDIT_MESH':
+                        if loop.vert.select or not VCTproperties.affect_only_selected:
+                            loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer])
+                    else:
+                        loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer])
+            bmesh_to_object(context, bm, mesh)
+        return {'FINISHED'}
 
 
 Inspect_meshes = set() #container of meshes being inspected
@@ -230,7 +259,130 @@ def remove_inspector(context, keep_data=True):
     VCTproperties.inspect_enable = False
     Inspect_meshes.clear()
 
+def random_fill_per_connect_component(context):
+    VCTproperties = context.scene.vct_properties
+    Echannel = VCTproperties.random_channel
+    meshes = fetch_mesh_in_context(context)
+    if not meshes: 
+        return {'CANCELLED'}
 
-            
+def fetch_connected_loops(bm):
+    visited = set()
+    loops_list = []
 
+    for face in bm.faces:
+        for loop in face.loops:
+            if loop.index in visited:
+                continue
 
+            stack = [loop]
+            component = []
+
+            while stack:
+                current = stack.pop()
+                if current.index in visited:
+                    continue
+
+                visited.add(current.index)
+                component.append(current)
+
+                # 1) Walk around the same face
+                next_loop = current.link_loop_next
+                prev_loop = current.link_loop_prev
+                if next_loop.index not in visited:
+                    stack.append(next_loop)
+                if prev_loop.index not in visited:
+                    stack.append(prev_loop)
+
+                # 2) Cross the shared edge to neighbouring face(s)
+                radial_next = current.link_loop_radial_next
+                radial_prev = current.link_loop_radial_prev
+                if radial_next is not None and radial_next is not current and radial_next.index not in visited:
+                    stack.append(radial_next)
+                if radial_prev is not None and radial_prev is not current and radial_prev.index not in visited:
+                    stack.append(radial_prev)
+
+            loops_list.append(component)
+
+    return loops_list
+
+'''
+def fetch_uv_island_loops(bm, uv_layer=None, eps=1e-6):
+    if uv_layer is None:
+        uv_layer = bm.loops.layers.uv.active
+        if uv_layer is None:
+            raise RuntimeError("No active UV layer")
+
+    visited = set()       # store visited FACE indices
+    loops_list = []       # list of components; each component is a list of BMLoop
+
+    # helper to compare two (u, v) with tolerance
+    def uv_equal(uv1, uv2):
+        du = uv1.x - uv2.x
+        dv = uv1.y - uv2.y
+        return (du * du + dv * dv) <= (eps * eps)
+
+    for face in bm.faces:
+        if face.index in visited:
+            continue
+
+        stack = [face]
+        faces_component = []
+
+        while stack:
+            f = stack.pop()
+            if f.index in visited:
+                continue
+
+            visited.add(f.index)
+            faces_component.append(f)
+
+            # map: vertex -> loop on this face (fast UV lookup per vertex)
+            f_v2l = {l.vert: l for l in f.loops}
+
+            # try to cross each boundary edge if UVs are welded
+            for l in f.loops:
+                e = l.edge
+
+                # find the other face(s) around this edge
+                for el in e.link_loops:
+                    of = el.face
+                    if of is f:
+                        continue  # same face
+
+                    # need UVs at both edge vertices on both faces
+                    vA, vB = e.verts[0], e.verts[1]
+
+                    # loops on current face for vA and vB
+                    la = f_v2l.get(vA)
+                    lb = f_v2l.get(vB)
+                    if la is None or lb is None:
+                        continue  # should not happen, but be safe
+
+                    uvA_cur = la[uv_layer].uv
+                    uvB_cur = lb[uv_layer].uv
+
+                    # loops on other face for vA and vB
+                    of_v2l = {ol.vert: ol for ol in of.loops}
+                    ola = of_v2l.get(vA)
+                    olb = of_v2l.get(vB)
+                    if ola is None or olb is None:
+                        continue
+
+                    uvA_other = ola[uv_layer].uv
+                    uvB_other = olb[uv_layer].uv
+
+                    # cross only if both endpoints have identical UVs
+                    if uv_equal(uvA_cur, uvA_other) and uv_equal(uvB_cur, uvB_other):
+                        if of.index not in visited:
+                            stack.append(of)
+
+        # convert the collected faces into loops for this UV island
+        component = []
+        for f in faces_component:
+            component.extend(list(f.loops))
+
+        loops_list.append(component)
+
+    return loops_list
+'''

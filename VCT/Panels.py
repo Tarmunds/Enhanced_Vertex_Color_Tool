@@ -56,9 +56,11 @@ class VCT_Panel(bpy.types.Panel):
             row.scale_y = 1.5
             row.operator("vct.random_fill", text="Random Fill", icon='BRUSH_DATA')
             layout.prop(vct_props, "random_channel", text="Random Channel", expand=True)
-            layout.prop(vct_props, "random_normalize", text="Normalize Random Values", toggle=True)
+            row = layout.row(align=False)
+            row.prop(vct_props, "random_normalize", text="Normalize Random Values", toggle=True)
+            row.prop(vct_props, "random_per_connected", text="Per Connected Mesh", toggle=True)
+            layout.separator()
             row = layout.row()
-            row.separator()
             row.scale_y = 1.5
             row.operator("vct.inspect_color", text="Inspect Vertex Color", icon='EYEDROPPER')
             layout.prop(vct_props, "inspect_channel", text="Inspect Channel", expand=True)
@@ -75,11 +77,11 @@ class VCT_Panel(bpy.types.Panel):
             layout.operator("vct.fill_value", text="Fill Value", icon='BRUSH_DATA')
             layout.prop(vct_props, "fill_value", text="Fill Value")
 
-
     def draw_header_preset(self, context):
         layout = self.layout
         layout.label(icon='BRUSH_DATA')
         layout.label(text="")
+
 
 _classes = (
     VCT_Panel,

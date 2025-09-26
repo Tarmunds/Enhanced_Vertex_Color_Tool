@@ -47,8 +47,8 @@ class VCT_FillColor(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        fill_vertex_color(context)
-        return {'FINISHED'}
+        return fill_vertex_color(context)
+
     
 class VCT_FillBlack(bpy.types.Operator):
     bl_idname = "vct.fill_black"
@@ -57,8 +57,7 @@ class VCT_FillBlack(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        fill_vertex_color(context, overide_color=(0.0, 0.0, 0.0, 1.0))
-        return {'FINISHED'}
+        return fill_vertex_color(context, overide_color=(0.0, 0.0, 0.0, 1.0))
 
 class VCT_FillWhite(bpy.types.Operator):
     bl_idname = "vct.fill_white"
@@ -67,8 +66,7 @@ class VCT_FillWhite(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        fill_vertex_color(context, overide_color=(1.0, 1.0, 1.0, 1.0))
-        return {'FINISHED'}
+        return fill_vertex_color(context, overide_color=(1.0, 1.0, 1.0, 1.0))
     
 class VCT_GradientFill(bpy.types.Operator):
     bl_idname = "vct.gradient_fill"
@@ -77,8 +75,7 @@ class VCT_GradientFill(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        fill_gradient(context)
-        return {'FINISHED'}
+        return fill_gradient(context)
 
 class VCT_RandomFill(bpy.types.Operator):
     bl_idname = "vct.random_fill"
@@ -87,8 +84,7 @@ class VCT_RandomFill(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        fill_random(context)
-        return {'FINISHED'}
+        return fill_random(context)
 
 class VCT_ChannelInspect(bpy.types.Operator):
     bl_idname = "vct.inspect_color"
@@ -106,8 +102,7 @@ class VCT_DiscardInspectChanges(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        remove_inspector(context, keep_data=False)
-        return {'FINISHED'}
+        return remove_inspector(context, keep_data=False)
 
 class VCT_FillValue(bpy.types.Operator):
     bl_idname = "vct.fill_value"
@@ -119,6 +114,7 @@ class VCT_FillValue(bpy.types.Operator):
     def execute(self, context):
         value = (context.scene.vct_properties.fill_value,)*4
         return fill_vertex_color(context, overide_color=value)
+    
 
 _classes = (
     VCT_SeeVcolor,
