@@ -69,7 +69,7 @@ class VCT_Panel(bpy.types.Panel):
             box.prop(vct_props, "inspect_channel", text="Inspect Channel", expand=True)
         else:
             box = layout.box()
-            row = go_to_row(box)
+            row = go_to_row(box, scale_y=1.5)
             row.operator("vct.inspect_color", text="Accept Change", icon='CHECKMARK')
             row.operator("vct.discard_inspect_changes", text="Close Inspector", icon='X')
             row = go_to_row(box, scale_y=1.0)
@@ -123,13 +123,16 @@ class VCT_Panel(bpy.types.Panel):
                 row.prop(vct_props, "random_per_connected", text="Per Connected", toggle=True)
                 row.prop(vct_props, "random_per_uv_island", text="Per UV Island", toggle=True)
             
-            box = dropdown_menu(layout, vct_props, "Bshow_clear", "Clear Channel", section_icon='TRASH')
+            box = dropdown_menu(layout, vct_props, "Bshow_managing", "Managing Channel", section_icon='SETTINGS')
             if box:
+                row = go_to_row(box, scale_y=1.0)
+                row.prop(vct_props, "clear_channel", text="Clear Channel", expand=True)
                 row = go_to_row(box)
                 row.operator("vct.clear_channel", text="Clear to 0", icon='KEY_BACKSPACE').value = 0.0
                 row.operator("vct.clear_channel", text="Clear to 1", icon='KEY_BACKSPACE_FILLED').value = 1.0
-                row = go_to_row(box, scale_y=1.0)
-                row.prop(vct_props, "clear_channel", text="Clear Channel", expand=True)
+                row = go_to_row(box)
+                row.operator("vct.invert_channel", text="Invert Channel", icon='NODE_COMPOSITING')
+        
 
             box = dropdown_menu(layout, vct_props, "Bshow_switch", "Switch Channels", section_icon='ARROW_LEFTRIGHT')
             if box:
@@ -139,19 +142,35 @@ class VCT_Panel(bpy.types.Panel):
                 row.prop(vct_props, "switch_source_channel", text="Source Channel", expand=True)
                 row = go_to_row(box, scale_y=1.0)
                 row.prop(vct_props, "switch_target_channel", text="Target Channel", expand=True)
+            
+            box = dropdown_menu(layout, vct_props, "Bshow_ao", "Ambient Occlusion to Vertex Color", section_icon='LIGHT_SUN')
+            if box:
+                row = go_to_row(box)
+                row.operator("vct.ao_to_vertex_color", text="Bake AO to Vertex Color", icon='LIGHT_SUN')
+                row = go_to_row(box, scale_y=1.0)
+                row.prop(vct_props, "ao_vertex_channel", text="AO Channel", expand=True)
+                row = go_to_row(box, scale_y=1.0)
+                row.prop(vct_props, "ao_uv_index", text="UV Map")
+                row = go_to_row(box, scale_y=1.0)
+                row.prop(vct_props, "ao_texture_size", text="Texture Size")
+                if vct_props.ao_show_percent:
+                    row = go_to_row(box, scale_y=1.0)
+                    row.prop(vct_props, "ao_percent", text="Progress")
 
         #special pannel when inspecting    
         else:
-            current_channel = {'R': 'Red', 'G': 'Green', 'B': 'Blue', 'A': 'Alpha'}[vct_props.inspect_channel]
-            layout.label(text=f"Inspecting {current_channel} Channel", icon='INFO')
-            row = go_to_row(layout)
-            row.operator("vct.inspect_color", text="Accept Change", icon='CHECKMARK')
-            row.operator("vct.discard_inspect_changes", text="Close Inspector", icon='X')
-
+            layout.separator()
+            # Inspect Fill Value and Clear Channel buttons
             row = go_to_row(layout, align=True)
             row.operator("vct.inspect_fill_value", text="Fill Value", icon='BRUSH_DATA')
             row.prop(vct_props, "fill_value", text="Fill Value")
+            row = go_to_row(layout)
+            row.operator("vct.clear_channel", text="Clear to 0", icon='KEY_BACKSPACE').value = 0.0
+            row.operator("vct.clear_channel", text="Clear to 1", icon='KEY_BACKSPACE_FILLED').value = 1.0
+            
 
+            layout.separator()
+            # Random Fill and Gradient Fill buttons and options
             row = go_to_row(layout)
             row.operator("vct.random_fill", text="Random Fill", icon='BRUSH_DATA')
             row = go_to_row(layout, scale_y=1.0)
@@ -159,18 +178,15 @@ class VCT_Panel(bpy.types.Panel):
             row.prop(vct_props, "random_per_connected", text="Per Connected", toggle=True)
             row.prop(vct_props, "random_per_uv_island", text="Per UV Island", toggle=True)
 
-            row = go_to_row(layout)
-            row.separator()
-
+            layout.separator()
+            # Gradient Fill buttons and options
             row = go_to_row(layout)
             row.operator("vct.gradient_fill", text="Gradient Fill", icon='BRUSH_DATA')
             row = go_to_row(layout, scale_y=1.0)
             row.prop(vct_props, "gradient_direction", text="Gradient Direction", expand=True)
             row.prop(vct_props, "gradient_WS_direction", text="World Space Direction", toggle=True)
+            
 
-            row.operator("vct.clear_channel", text="Clear to 0", icon='X').value = 0.0
-            row.operator("vct.clear_channel", text="Clear to 1", icon='X').value = 1.0
-            layout.prop(vct_props, "clear_channel", text="Clear Channel", expand=True)
 
 
     def draw_header_preset(self, context):

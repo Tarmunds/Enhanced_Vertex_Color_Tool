@@ -13,6 +13,13 @@ Echannel_axis = [
             ('Y', "Y-Axis", "Y-Axis"),
             ('Z', "Z-Axis", "Z-Axis"),
         ]
+Echannel_resolution = [
+            ('256', "Low (256x256)", "Low Resolution 256x256"),
+            ('512', "Medium (512x512)", "Medium Resolution 512x512"),
+            ('1024', "High (1024x1024)", "High Resolution 1024x1024"),
+            ('2048', "Ultra (2048x2048)", "Ultra Resolution 2048x2048"),
+            ('4096', "Extreme (4096x4096)", "Extreme Resolution 4096x4096"),
+        ]
 
 class VCTProperties(PropertyGroup):
     fill_color: FloatVectorProperty(
@@ -106,6 +113,32 @@ class VCTProperties(PropertyGroup):
         items=Echannel_source,
         default='G'
     )
+    ao_vertex_channel: EnumProperty(
+        name="AO Vertex Color Channel",
+        items=Echannel_source,
+        default='R'
+    )
+    ao_uv_index: IntProperty(
+        name="UV Map Index",
+        default=0
+    )
+    ao_texture_size: EnumProperty(
+        name="AO Texture Size",
+        items=Echannel_resolution,
+        default='1024'
+    )
+    ao_percent: FloatProperty(
+        name="AO Process %",
+        default=1.0,
+        min=0.0,
+        max=100.0,
+        subtype='PERCENTAGE',
+        precision=3,
+    )
+    ao_show_percent: BoolProperty(
+        name="Show AO Progress %",
+        default=False
+    )
     Bshow_fill_color: BoolProperty(
         name="Show Fill Color",
         default=False
@@ -118,12 +151,16 @@ class VCTProperties(PropertyGroup):
         name="Show Random Options",
         default=False
     )
-    Bshow_clear: BoolProperty(
-        name="Show Clear Options",
+    Bshow_managing: BoolProperty(
+        name="Show Managing Options",
         default=False
     )
     Bshow_switch: BoolProperty(
         name="Show Switch Options",
+        default=False
+    )
+    Bshow_ao: BoolProperty(
+        name="Show Ambient Occlusion Options",
         default=False
     )
 

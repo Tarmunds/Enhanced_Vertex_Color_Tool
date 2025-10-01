@@ -144,6 +144,27 @@ class VCT_SwitchChannel(bpy.types.Operator):
     def execute(self, context):
         return switch_channel(context)
 
+class VCT_AOToVertexColor(bpy.types.Operator):
+    bl_idname = "vct.ao_to_vertex_color"
+    bl_label = "Bake AO to Vertex Color"
+    bl_description = "Bake Ambient Occlusion to the selected vertex color channel of selected mesh objects"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'OBJECT'
+
+    def execute(self, context):
+        return bake_ao_to_vertex_color(context)
+    
+class VCT_InvertChannel(bpy.types.Operator):
+    bl_idname = "vct.invert_channel"
+    bl_label = "Invert Channel"
+    bl_description = "Invert the values of the selected channel in the vertex colors of selected mesh objects"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        return invert_vertex_colors(context)
 
 _classes = (
     VCT_SeeVcolor,
@@ -159,6 +180,8 @@ _classes = (
     VCT_ClearChannel,
     VCT_SwitchChannel,
     VCT_Fill1Channel,
+    VCT_AOToVertexColor,
+    VCT_InvertChannel,
 )
 
 def register():

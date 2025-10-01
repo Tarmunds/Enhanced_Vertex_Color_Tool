@@ -1,6 +1,0 @@
-import bpy
-
-properties = bpy.data.scenes["Scene"].vct_properties
-VCT = bpy.ops.vct
-
-VCT.fill_color

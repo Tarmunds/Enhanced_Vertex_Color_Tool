@@ -570,3 +570,214 @@ def switch_channel(context):
         bmesh_to_object(context, bm, mesh)
     return {'FINISHED'}
 
+
+def bake_ao_to_vertex_color(context):
+    scene = context.scene
+    VCTproperties = scene.vct_properties
+    texture_size_map = {
+        '256': 256, '512': 512, '1024': 1024, '2048': 2048, '4096': 4096,
+    }[VCTproperties.ao_texture_size]
+    Echannel = VCTproperties.ao_vertex_channel
+    fill_grayscale = True if VCTproperties.inspect_enable else False
+
+    VCTproperties.ao_percent = 0.0
+    VCTproperties.ao_show_progress = True
+
+    meshes = fetch_mesh_in_context(context)
+    if not meshes:
+        return {'CANCELLED'}
+
+
+
+    # Snapshot current selection & mode so we can restore it later
+    prev_mode = bpy.context.mode
+    prev_engine = scene.render.engine
+    view_layer = context.view_layer
+    prev_active = view_layer.objects.active
+    prev_selected = [obj for obj in context.selected_objects]
+
+    # Ensure Cycles + object mode for baking
+    scene.render.engine = 'CYCLES'
+    if prev_mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
+
+    try:
+        for mesh in meshes:
+            # Skip invalid UV index early
+            uv_index = VCTproperties.ao_uv_index
+            if uv_index >= len(mesh.data.uv_layers):
+                print(f"Skipping {mesh.name}: UV index {uv_index} does not exist")
+                continue
+
+            # Isolate current object selection to avoid "No active image" across others
+            for o in prev_selected:
+                o.select_set(False)
+            mesh.select_set(True)
+            view_layer.objects.active = mesh
+
+            # Create temp image + material, make Image Texture node active
+            temp_image = bpy.data.images.new(
+                "AO_Temp", width=texture_size_map, height=texture_size_map, alpha=False
+            )
+            temp_material = bpy.data.materials.new(name="AO_Temp_Material")
+            temp_material.use_nodes = True
+            nt = temp_material.node_tree
+
+            # Ensure there is at least one output so the node tree is valid (defensive)
+            if not any(n.type == 'OUTPUT_MATERIAL' for n in nt.nodes):
+                out = nt.nodes.new("ShaderNodeOutputMaterial")
+                out.location = (300, 0)
+
+            tex_node = nt.nodes.new("ShaderNodeTexImage")
+            tex_node.image = temp_image
+            # Important: make the image node the active one for baking
+            for n in nt.nodes: n.select = False
+            tex_node.select = True
+            nt.nodes.active = tex_node
+
+            # Remember original active material and slot index
+            original_active_mat = mesh.active_material
+            original_active_slot = mesh.active_material_index
+
+            # Assign temp mat (make sure the object actually uses it)
+            if mesh.data.materials:
+                if original_active_slot < 0:
+                    mesh.data.materials.append(temp_material)
+                    mesh.active_material_index = len(mesh.data.materials) - 1
+                else:
+                    mesh.data.materials[mesh.active_material_index] = temp_material
+            else:
+                mesh.data.materials.append(temp_material)
+                mesh.active_material_index = 0
+            mesh.active_material = temp_material
+
+            # Make the correct UV the active one for baking
+            mesh.data.uv_layers.active_index = uv_index
+            uv_layer_name = mesh.data.uv_layers[uv_index].name
+
+            # Bake settings
+            scene.cycles.bake_type = 'AO'
+            scene.render.bake.use_pass_direct = False
+            scene.render.bake.use_pass_indirect = False
+            scene.render.bake.use_pass_color = True
+            scene.render.bake.target = 'IMAGE_TEXTURES'  # explicit
+
+            # Try baking this single object only
+            try:
+                bpy.ops.object.bake(type='AO')
+            except RuntimeError as e:
+                print(f"Baking failed for {mesh.name}: {e}")
+                # Clean up safely and move to next object
+                if temp_material and temp_material.users == 0:
+                    try: bpy.data.materials.remove(temp_material)
+                    except Exception: pass
+                if temp_image and temp_image.users == 0:
+                    try: bpy.data.images.remove(temp_image)
+                    except Exception: pass
+                # Restore original material if we had one
+                if original_active_mat:
+                    mesh.active_material = original_active_mat
+                    if 0 <= original_active_slot < len(mesh.data.materials):
+                        mesh.data.materials[mesh.active_material_index] = original_active_mat
+                continue
+
+            # ---- Transfer baked AO to vertex colors ----
+            bm = bmesh_from_object(context, mesh)
+            color_layer = fetch_relevant_color_layer(bm, mesh)
+            bm_uv_layer = bm.loops.layers.uv.get(uv_layer_name) or bm.loops.layers.uv.active
+
+            width, height = temp_image.size
+            pixels = temp_image.pixels[:]  # RGBA flat array
+
+            def sample_ao(u, v):
+                px = min(max(int(u * width), 0), width - 1)
+                py = min(max(int(v * height), 0), height - 1)
+                idx = (py * width + px) * 4
+                return pixels[idx]  # R channel
+
+            affect_only_selected = getattr(VCTproperties, "affect_only_selected", False)
+            edit_mode = (prev_mode == 'EDIT_MESH')  # we switched to OBJECT for bake
+
+            for face in bm.faces:
+                for loop in face.loops:
+                    if edit_mode and affect_only_selected and not loop.vert.select:
+                        continue
+                    uv = loop[bm_uv_layer].uv
+                    ao_val = sample_ao(uv.x, uv.y)
+                    current = loop[color_layer]
+                    loop[color_layer] = value_to_channel(
+                        ao_val, Echannel, current, fillgrayscale=fill_grayscale
+                    )
+
+            bmesh_to_object(context, bm, mesh)
+
+            #update percent
+            VCTproperties.ao_percent = round((meshes.index(mesh) + 1) / len(meshes) * 100, 2)
+
+            # Cleanup temp data and restore original material
+            # Put back original material if there was one, otherwise remove temp slot
+            if original_active_mat:
+                mesh.active_material = original_active_mat
+                if 0 <= original_active_slot < len(mesh.data.materials):
+                    mesh.data.materials[mesh.active_material_index] = original_active_mat
+            else:
+                # If we created a new slot, remove it
+                if temp_material in mesh.data.materials.values():
+                    idx = [i for i, m in enumerate(mesh.data.materials) if m == temp_material]
+                    for i in idx[::-1]:
+                        mesh.active_material_index = i
+                        bpy.ops.object.material_slot_remove()
+
+            # Remove temp datablocks if not used elsewhere
+            try:
+                if temp_material and temp_material.users == 0:
+                    bpy.data.materials.remove(temp_material)
+            except Exception:
+                pass
+            try:
+                if temp_image and temp_image.users == 0:
+                    bpy.data.images.remove(temp_image)
+            except Exception:
+                pass
+
+        return {'FINISHED'}
+
+    finally:
+        # Restore engine, selection, active, and mode
+        VCTproperties.ao_show_progress = False
+        scene.render.engine = prev_engine
+        for o in context.selected_objects:
+            o.select_set(False)
+        for o in prev_selected:
+            o.select_set(True)
+        view_layer.objects.active = prev_active
+        if prev_mode != bpy.context.mode:
+            try:
+                bpy.ops.object.mode_set(mode=prev_mode, toggle=False)
+            except Exception:
+                pass
+
+def invert_vertex_colors(context):
+    VCTproperties = context.scene.vct_properties
+    meshes = fetch_mesh_in_context(context)
+    Echannel = VCTproperties.clear_channel
+    if not meshes:
+        return {'CANCELLED'}
+
+    for mesh in meshes:
+        bm = bmesh_from_object(context, mesh)
+        color_layer = fetch_relevant_color_layer(bm, mesh)
+
+        for face in bm.faces:
+            for loop in face.loops:
+                if context.mode == 'EDIT_MESH':
+                    if loop.vert.select or not VCTproperties.affect_only_selected:
+                        source_value = getattr(loop[color_layer], {'R': 'x', 'G': 'y', 'B': 'z', 'A': 'w'}[Echannel])
+                        loop[color_layer] = value_to_channel(1.0 - source_value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+                else:
+                    source_value = getattr(loop[color_layer], {'R': 'x', 'G': 'y', 'B': 'z', 'A': 'w'}[Echannel])
+                    loop[color_layer] = value_to_channel(1.0 - source_value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+
+        bmesh_to_object(context, bm, mesh)
+
+    return {'FINISHED'}
