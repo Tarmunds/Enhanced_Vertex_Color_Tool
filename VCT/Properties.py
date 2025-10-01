@@ -72,6 +72,10 @@ class VCTProperties(PropertyGroup):
         name="Inherit From Active",
         default=False
     )
+    gradient_invert: BoolProperty(
+        name="Invert Gradient",
+        default=False
+    )
     random_channel: EnumProperty(
         name="Random Channel",
         items=Echannel_source,

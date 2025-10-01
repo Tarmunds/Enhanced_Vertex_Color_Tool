@@ -107,9 +107,11 @@ class VCT_Panel(bpy.types.Panel):
                 row = go_to_row(box, scale_y=1.0)
                 row.prop(vct_props, "gradient_global", text="Global Gradient", toggle=True)
                 row.prop(vct_props, "gradient_WS_direction", text="World Space Direction", toggle=True)
+                row = go_to_row(box, scale_y=1.0)
                 sub = row.row()
                 sub.enabled =  not vct_props.gradient_WS_direction
                 sub.prop(vct_props, "gradient_direction_inherit_from_active", text="Inherit From Active", toggle=True)
+                row.prop(vct_props, "gradient_invert", text="Invert Gradient", toggle=True)
 
 
             box = dropdown_menu(layout, vct_props, "Bshow_random", "Random Fill", section_icon='POINTCLOUD_POINT')

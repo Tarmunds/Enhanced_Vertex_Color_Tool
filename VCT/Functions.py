@@ -133,6 +133,7 @@ def fill_gradient(context):
     Echannel = VCTproperties.gradient_channel
     use_global = VCTproperties.gradient_global
     Edirection = VCTproperties.gradient_direction
+    InvertGradient = VCTproperties.gradient_invert
     direction = {
         'X': (1, 0, 0),
         'Y': (0, 1, 0),
@@ -193,6 +194,8 @@ def fill_gradient(context):
                         continue
                     projection_value = (mw @ loop.vert.co).dot(worldDirection)
                     value = (projection_value - global_min) / (global_max - global_min)
+                    if InvertGradient:
+                        value = 1.0 - value
                     loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
         else:
             # calculate local direction if needed
@@ -230,6 +233,8 @@ def fill_gradient(context):
                 for loop in face.loops:
                     projection_value = loop.vert.co.dot(LocalDirection)
                     value = (projection_value - min_coord) / (max_coord - min_coord)
+                    if InvertGradient:
+                        value = 1.0 - value
 
                     if context.mode == 'EDIT_MESH' and VCTproperties.affect_only_selected:
                         if loop.vert.select:
