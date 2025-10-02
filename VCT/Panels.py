@@ -100,6 +100,9 @@ class VCT_Panel(bpy.types.Panel):
             if box:
                 row = go_to_row(box)
                 row.operator("vct.gradient_fill", text="Gradient Fill", icon='BRUSH_DATA')
+                row = go_to_row(box, align=True)
+                row.operator("vct.trace_gradient", text="Trace Linear Gradient", icon='CURVE_PATH').Bcircle = False
+                row.operator("vct.trace_gradient", text="Trace Radial Gradient", icon='CURVE_NCIRCLE').Bcircle = True
                 row = go_to_row(box)
                 row.prop(vct_props, "gradient_channel", text="Gradient Channel", expand=True)
                 row = go_to_row(box, scale_y=1.0)

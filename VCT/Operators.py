@@ -166,6 +166,38 @@ class VCT_InvertChannel(bpy.types.Operator):
     def execute(self, context):
         return invert_vertex_colors(context)
 
+class VCT_TraceGradient(bpy.types.Operator):
+    bl_idname = "vct.trace_gradient"
+    bl_label = "Trace Gradient"
+    bl_description = "Trace a gradient line in the 3D View to fill the selected channel in the vertex colors of selected mesh objects"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    #bool for drawing circle
+    Bcircle: bpy.props.BoolProperty(name="Draw Circle", default=False)
+    #var for cursor position
+    start = None
+    current = None
+    end = None
+    is_drawing = False
+    #ref to the draw handler
+    handle = None
+    shader = None
+
+    def invoke(self, context, event):
+        self.start = None
+        self.current = None
+        self.is_drawing = False
+
+        add_handler(self, context)
+        context.window_manager.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+    
+    def modal(self, context, event):
+        return trace_gradient_modal(self, context, event)
+    
+
+
+
 _classes = (
     VCT_SeeVcolor,
     VCT_ShadeFlat,
@@ -182,6 +214,7 @@ _classes = (
     VCT_Fill1Channel,
     VCT_AOToVertexColor,
     VCT_InvertChannel,
+    VCT_TraceGradient,
 )
 
 def register():

@@ -1,5 +1,5 @@
-import bpy, bmesh, mathutils, random
-
+import bpy, bmesh, mathutils, random, gpu, math
+from gpu_extras.batch import batch_for_shader
 
 #---- Utility Functions ----#
 
@@ -786,3 +786,88 @@ def invert_vertex_colors(context):
         bmesh_to_object(context, bm, mesh)
 
     return {'FINISHED'}
+
+#---- GPU Functions ----#
+
+def draw_2d(self, context):
+    if not self.is_drawing or not self.start or not self.current:
+        return
+    
+    x1, y1 = self.start
+    x2, y2 = self.current
+
+    if self.shader is None:
+        self.shader = gpu.shader.from_builtin("UNIFORM_COLOR")
+    
+    if not self.Bcircle:
+        coords = [(x1, y1), (x2, y2)]
+        batch = batch_for_shader(self.shader, 'LINES', {"pos": coords})
+    else:
+        # compute radius from center to current
+        dx = x2 - x1
+        dy = y2 - y1
+        radius = math.sqrt(dx*dx + dy*dy)
+
+        # generate circle points (e.g. 64 segments)
+        segments = 64
+        circle_coords = []
+        for i in range(segments+1):  # +1 to close the loop
+            angle = 2 * math.pi * i / segments
+            cx = x1 + math.cos(angle) * radius
+            cy = y1 + math.sin(angle) * radius
+            circle_coords.append((cx, cy))
+
+        # now make a LINE_STRIP instead of LINES
+        batch = batch_for_shader(self.shader, 'LINE_STRIP', {"pos": circle_coords})
+
+    self.shader.bind()
+    self.shader.uniform_float("color", (0.2, 0.8, 1.0, 1.0))  # RGBA
+    batch.draw(self.shader)
+
+def add_handler(self, context):
+    if self.handle is None:
+        self.handle = bpy.types.SpaceView3D.draw_handler_add(
+            draw_2d, (self, context), 'WINDOW', 'POST_PIXEL'
+        )
+
+def remove_handler(self):
+    if self.handle is not None:
+        bpy.types.SpaceView3D.draw_handler_remove(self.handle, 'WINDOW')
+        self.handle = None
+        self.shader = None
+
+def trace_gradient_modal(self, context, event):
+        # ask the area to redraw so our _draw_2d runs smoothly
+        if context.area:
+            context.area.tag_redraw()
+
+        if context.area and context.area.type != 'VIEW_3D':
+            remove_handler(self)
+            self.report({'INFO'}, "Not in 3D View")
+            return {'CANCELLED'}
+
+        if event.type in {'ESC', 'RIGHTMOUSE'}:
+            self.is_drawing = False
+            remove_handler(self)
+            self.report({'INFO'}, "Cancelled")
+            return {'CANCELLED'}
+
+        if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
+            self.start = (event.mouse_region_x, event.mouse_region_y)
+            self.current = self.start
+            self.is_drawing = True
+            return {'RUNNING_MODAL'}
+
+        if event.type == 'MOUSEMOVE' and self.is_drawing:
+            self.current = (event.mouse_region_x, event.mouse_region_y)
+            return {'RUNNING_MODAL'}
+
+        if event.type == 'LEFTMOUSE' and event.value == 'RELEASE' and self.is_drawing:
+            end = (event.mouse_region_x, event.mouse_region_y)
+            self.end = end
+            self.is_drawing = False
+            remove_handler(self)
+            print("[Step2] line from", self.start, "to", end)
+            return {'FINISHED'}
+        
+        return {'RUNNING_MODAL'}
