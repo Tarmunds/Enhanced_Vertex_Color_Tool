@@ -791,39 +791,68 @@ def invert_vertex_colors(context):
 #---- GPU Functions ----#
 
 def draw_2d(self, context):
+    VCTproperties = context.scene.vct_properties
     if not self.is_drawing or not self.start or not self.current:
         return
-    
+
     x1, y1 = self.start
     x2, y2 = self.current
 
+    if VCTproperties.inspect_enable:
+        channel_color = (1, 0, 0, 1.0)
+    else:
+        channel_color = {
+            'R': (1, 0, 0, 1.0),
+            'G': (0, 1, 0, 1.0),
+            'B': (0, 0, 1, 1.0),
+            'A': (1, 1, 1, 1.0),
+        }[context.scene.vct_properties.gradient_channel]
+
     if self.shader is None:
-        self.shader = gpu.shader.from_builtin("UNIFORM_COLOR")
-    
+        self.shader = gpu.shader.from_builtin("SMOOTH_COLOR")
+
     if not self.Bcircle:
         coords = [(x1, y1), (x2, y2)]
-        batch = batch_for_shader(self.shader, 'LINES', {"pos": coords})
+        primitive = 'LINES'
+        colors = [ (0.0, 0.0, 0.0, 1.0), channel_color]
+
+        batch = batch_for_shader(self.shader, primitive, {"pos": coords, "color": colors})
+        gpu.state.line_width_set(2.0)
+        self.shader.bind()
+        batch.draw(self.shader)
+
     else:
-        # compute radius from center to current
-        dx = x2 - x1
-        dy = y2 - y1
+        dx, dy = x2 - x1, y2 - y1
         radius = math.sqrt(dx*dx + dy*dy)
-
-        # generate circle points (e.g. 64 segments)
         segments = 64
-        circle_coords = []
-        for i in range(segments+1):  # +1 to close the loop
-            angle = 2 * math.pi * i / segments
-            cx = x1 + math.cos(angle) * radius
-            cy = y1 + math.sin(angle) * radius
-            circle_coords.append((cx, cy))
+        circle_coords = [
+            (x1 + math.cos(2*math.pi*i/segments)*radius,
+             y1 + math.sin(2*math.pi*i/segments)*radius)
+            for i in range(segments + 1)
+        ]
+        circle_colors = [channel_color] * len(circle_coords)
 
-        # now make a LINE_STRIP instead of LINES
-        batch = batch_for_shader(self.shader, 'LINE_STRIP', {"pos": circle_coords})
+        # batch for circle
+        circle_batch = batch_for_shader(self.shader, 'LINE_STRIP',
+                                        {"pos": circle_coords, "color": circle_colors})
 
-    self.shader.bind()
-    self.shader.uniform_float("color", (0.2, 0.8, 1.0, 1.0))  # RGBA
-    batch.draw(self.shader)
+        # batch for single point at start
+        point_batch = batch_for_shader(self.shader, 'POINTS',
+                                       {"pos": [(x1, y1)], "color": [channel_color]})
+
+        gpu.state.blend_set('ALPHA')
+
+        # Draw circle
+        gpu.state.line_width_set(2.0)
+        self.shader.bind()
+        circle_batch.draw(self.shader)
+
+        # Draw the single point
+        gpu.state.point_size_set(8.0)   # size in pixels
+        point_batch.draw(self.shader)
+
+        gpu.state.blend_set('NONE')
+
 
 def add_handler(self, context):
     if self.handle is None:
@@ -837,6 +866,10 @@ def remove_handler(self):
         self.handle = None
         self.shader = None
 
+def set_no_active_trace(context):
+    for i in context.scene.vct_properties.trace_gradient_active:
+        context.scene.vct_properties.trace_gradient_active[i] = False
+
 def trace_gradient_modal(self, context, event):
         # ask the area to redraw so our _draw_2d runs smoothly
         if context.area:
@@ -845,12 +878,14 @@ def trace_gradient_modal(self, context, event):
         if context.area and context.area.type != 'VIEW_3D':
             remove_handler(self)
             self.report({'INFO'}, "Not in 3D View")
+            set_no_active_trace(context)
             return {'CANCELLED'}
 
         if event.type in {'ESC', 'RIGHTMOUSE'}:
             self.is_drawing = False
             remove_handler(self)
             self.report({'INFO'}, "Cancelled")
+            set_no_active_trace(context)
             return {'CANCELLED'}
 
         if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
@@ -888,6 +923,7 @@ def trace_gradient_modal(self, context, event):
                 )
 
             self.report({'INFO'}, "Trace Gradient applied" if result == {'FINISHED'} else "Trace Gradient failed")
+            set_no_active_trace(context)
             return result
         
         return {'RUNNING_MODAL'}

@@ -76,6 +76,11 @@ class VCTProperties(PropertyGroup):
         name="Invert Gradient",
         default=False
     )
+    trace_gradient_active: bpy.props.BoolVectorProperty(
+        name="Trace Gradient Active",
+        size=2,
+        default=(False, False)
+    )
     random_channel: EnumProperty(
         name="Random Channel",
         items=Echannel_source,

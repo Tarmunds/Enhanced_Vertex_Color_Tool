@@ -188,6 +188,14 @@ class VCT_TraceGradient(bpy.types.Operator):
         self.current = None
         self.is_drawing = False
 
+        if self.Bcircle:
+            context.scene.vct_properties.trace_gradient_active[1] = not context.scene.vct_properties.trace_gradient_active[1]
+            context.scene.vct_properties.trace_gradient_active[0] = False
+        else:
+            context.scene.vct_properties.trace_gradient_active[0] = not context.scene.vct_properties.trace_gradient_active[0]
+            context.scene.vct_properties.trace_gradient_active[1] = False
+
+
         add_handler(self, context)
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
