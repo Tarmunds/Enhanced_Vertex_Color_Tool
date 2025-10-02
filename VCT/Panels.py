@@ -190,9 +190,9 @@ class VCT_Panel(bpy.types.Panel):
             row = go_to_row(layout, scale_y=1.0)
             row.prop(vct_props, "gradient_direction", text="Gradient Direction", expand=True)
             row.prop(vct_props, "gradient_WS_direction", text="World Space Direction", toggle=True)
-            
-
-
+            row = go_to_row(box, align=True)
+            row.operator("vct.trace_gradient", text="Trace Linear Gradient", icon='CURVE_PATH').Bcircle = False
+            row.operator("vct.trace_gradient", text="Trace Radial Gradient", icon='CURVE_NCIRCLE').Bcircle = True
 
     def draw_header_preset(self, context):
         layout = self.layout

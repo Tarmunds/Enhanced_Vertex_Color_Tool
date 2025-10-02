@@ -1,5 +1,6 @@
 import bpy, bmesh, mathutils, random, gpu, math
 from gpu_extras.batch import batch_for_shader
+from bpy_extras import view3d_utils 
 
 #---- Utility Functions ----#
 
@@ -867,7 +868,165 @@ def trace_gradient_modal(self, context, event):
             self.end = end
             self.is_drawing = False
             remove_handler(self)
-            print("[Step2] line from", self.start, "to", end)
-            return {'FINISHED'}
+
+            if self.Bcircle:
+                # radial: center at start, radius from start->end
+                cx, cy = self.start
+                ex, ey = end
+                radius = ((ex - cx) ** 2 + (ey - cy) ** 2) ** 0.5
+                result = fill_gradient_camera_radial(
+                    context,
+                    self.start, radius,
+                    region=context.region, rv3d=context.region_data
+                )
+            else:
+                # linear along the traced line
+                result = fill_gradient_camera_space(
+                    context,
+                    self.start, end,
+                    region=context.region, rv3d=context.region_data
+                )
+
+            self.report({'INFO'}, "Trace Gradient applied" if result == {'FINISHED'} else "Trace Gradient failed")
+            return result
         
         return {'RUNNING_MODAL'}
+
+def fill_gradient_camera_space(context, start_xy, end_xy, region=None, rv3d=None):
+    VCTproperties = context.scene.vct_properties
+    Echannel = VCTproperties.gradient_channel
+    InvertGradient = VCTproperties.gradient_invert
+
+    # Validate the line
+    x1, y1 = start_xy
+    x2, y2 = end_xy
+    dx, dy = (x2 - x1), (y2 - y1)
+    length_sq = dx*dx + dy*dy
+    if length_sq <= 1e-12:
+        return {'CANCELLED'}
+
+    # Fallback to the active 3D view's region/rv3d if not provided
+    if region is None or rv3d is None:
+        area_3d = None
+        for area in context.screen.areas:
+            if area.type == 'VIEW_3D':
+                area_3d = area
+                break
+        if area_3d is None:
+            return {'CANCELLED'}
+        region = next((r for r in area_3d.regions if r.type == 'WINDOW'), None)
+        rv3d = area_3d.spaces.active.region_3d if area_3d.spaces.active else None
+        if region is None or rv3d is None:
+            return {'CANCELLED'}
+
+    line_origin = mathutils.Vector((x1, y1))
+    line_dir = mathutils.Vector((dx, dy))
+    line_dir_n = line_dir / math.sqrt(length_sq)
+
+    meshes = fetch_mesh_in_context(context)
+    if not meshes:
+        return {'CANCELLED'}
+
+    for mesh in meshes:
+        bm = bmesh_from_object(context, mesh)
+
+        # choose the correct color layer (respects Inspect mode)
+        color_layer = fetch_relevant_color_layer(bm, mesh)
+        if color_layer is None:
+            bmesh_to_object(context, bm, mesh)
+            continue
+
+        mw = mesh.matrix_world
+        affect_only_selected = getattr(VCTproperties, "affect_only_selected", False)
+        edit_mode = (context.mode == 'EDIT_MESH')
+
+        for face in bm.faces:
+            for loop in face.loops:
+                if edit_mode and affect_only_selected and not loop.vert.select:
+                    continue
+
+                world_co = mw @ loop.vert.co
+                # Project to 2D (region) coordinates
+                p2d = view3d_utils.location_3d_to_region_2d(region, rv3d, world_co)
+                if p2d is None:
+                    continue
+
+                # Project this point onto the traced line to get normalized t in [0..1]
+                v = mathutils.Vector((p2d.x, p2d.y)) - line_origin
+                t = v.dot(line_dir_n) / math.sqrt(length_sq) * math.sqrt(length_sq)  # collapses to v.dot(n)
+                # Because n is unit along the line direction, t is in pixels from start; normalize by line length:
+                t = v.dot(line_dir) / length_sq  # equivalent and clearer
+                t = max(0.0, min(1.0, t))
+
+                value = 1.0 - t if InvertGradient else t
+                loop[color_layer] = value_to_channel(
+                    value, Echannel, loop[color_layer],
+                    fillgrayscale=True if VCTproperties.inspect_enable else False
+                )
+
+        bmesh_to_object(context, bm, mesh)
+
+    return {'FINISHED'}
+
+
+def fill_gradient_camera_radial(context, center_xy, radius_px, region=None, rv3d=None):
+    VCTproperties = context.scene.vct_properties
+    Echannel = VCTproperties.gradient_channel
+    InvertGradient = VCTproperties.gradient_invert
+
+    if radius_px <= 1e-6:
+        return {'CANCELLED'}
+
+    # Fallback to active 3D view region/rv3d if not provided
+    if region is None or rv3d is None:
+        area_3d = None
+        for area in context.screen.areas:
+            if area.type == 'VIEW_3D':
+                area_3d = area
+                break
+        if area_3d is None:
+            return {'CANCELLED'}
+        region = next((r for r in area_3d.regions if r.type == 'WINDOW'), None)
+        rv3d = area_3d.spaces.active.region_3d if area_3d.spaces.active else None
+        if region is None or rv3d is None:
+            return {'CANCELLED'}
+
+    c = mathutils.Vector(center_xy)
+
+    meshes = fetch_mesh_in_context(context)
+    if not meshes:
+        return {'CANCELLED'}
+
+    for mesh in meshes:
+        bm = bmesh_from_object(context, mesh)
+        color_layer = fetch_relevant_color_layer(bm, mesh)
+        if color_layer is None:
+            bmesh_to_object(context, bm, mesh)
+            continue
+
+        mw = mesh.matrix_world
+        affect_only_selected = getattr(VCTproperties, "affect_only_selected", False)
+        edit_mode = (context.mode == 'EDIT_MESH')
+
+        for face in bm.faces:
+            for loop in face.loops:
+                if edit_mode and affect_only_selected and not loop.vert.select:
+                    continue
+
+                world_co = mw @ loop.vert.co
+                p2d = view3d_utils.location_3d_to_region_2d(region, rv3d, world_co)
+                if p2d is None:
+                    continue
+
+                d = (mathutils.Vector((p2d.x, p2d.y)) - c).length
+                t = max(0.0, min(1.0, d / radius_px))  # 0 at center, 1 at radius
+                value = t if InvertGradient else 1.0 - t
+
+                loop[color_layer] = value_to_channel(
+                    value, Echannel, loop[color_layer],
+                    fillgrayscale=True if VCTproperties.inspect_enable else False
+                )
+
+        bmesh_to_object(context, bm, mesh)
+
+    return {'FINISHED'}
