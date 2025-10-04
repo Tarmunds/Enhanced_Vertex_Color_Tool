@@ -1,7 +1,7 @@
 import importlib
 
 bl_info = {
-    "name": "Debug VCT",
+    "name": "Enhanced Vertex Color Tool",
     "blender": (4, 2, 0),
     "category": "Object",
     "version": (3, 0, 0),
