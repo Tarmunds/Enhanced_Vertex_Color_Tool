@@ -1,58 +1,101 @@
-# Enhanced Vertex Color Tool for Blender
+# Enhanced Vertex Color Tool (VCT)
 
-The **Enhanced Vertex Color Tool** is a Blender addon designed to streamline the process of working with vertex colors in 3D models. It offers a set of advanced tools for filling, gradient-based coloring, randomizing vertex colors, baking textures or AO, switching or clearing channels, all within an intuitive panel interface.
+A Blender addon that provides advanced vertex color editing and visualization tools. It enhances the default vertex color workflow with powerful operations such as gradients, randomization, AO baking, channel management, and inspection.
 
-## Features
+---
 
-- **Vertex Color Preview**: Preview the vertex color on all meshes. This allows for quick visual feedback on the color selection or effect you want to apply.
-- **Vertex Color RGB Fill**: Fill the object vertex color with the selected color in the RGB channels.
-- **Vertex Color Alpha Fill**: Fill the object vertex color with the selected value in the ALPHA channel.
-- **Vertex Color Gradient Fill**: Apply a gradient to the vertex colors based on object coordinates (e.g., bottom-top, left-right, front-back). You can target specific color channels (Red, Green, Blue) and invert the gradient if needed. The gradient can also be based on world coordinates. Additionally, you can spread the gradient across multiple selected meshes in world space only. Lastly, you can adjust the gradient range by modifying the start and end values.
-- **Randomize Vertex Colors**: Randomize the vertex color value in one channel on selected mesh objects. You can also "normalize" the values, which ensures that all meshes have a unique value offset, fully utilizing the color range. This approach is less organic but can be useful for certain effects.
-- **Bake Texture to Channel**: Bake the texture to the specified channel, using the UV index you chose.
-- **Bake AO to Channel**: Compute an ambient occlusion using Cycles and bake it to the specified vertex color channel. Note that this process can take some time depending on your mesh density. (Currently aware of an issue with multiple meshes, where you need to launch the operation twice for it to apply to all meshes. This is being worked on.)
-- **Switch Channel Data**: This allows you to exchange data between channels. It is useful for tweaking or rearranging your channel usage.
-- **Clear Channel Data**: Clear a specific channel without affecting others. You can clear the channel to 0 or 1.
+## ✨ Features
 
-### Panel Interface
+- **Viewport Utilities**
+  - Toggle between **Vertex Color** and **Material** viewport display.
+  - Switch between **Flat** and **Studio** lighting for better visualization.
+  
+- **Fill Tools**
+  - Fill with custom color, black, white, or single channel values.
+  - Per-channel fill with adjustable intensity.
 
-The addon introduces a custom panel in the **3D View** under the **Tarmunds Addons** tab.  
-All the operators are organized into dropdown sections to ease readability.  
-At the top of the panel, you'll find the boolean operator to turn the vertex color preview on or off.
+- **Gradient Tools**
+  - Linear and radial gradient fills.
+  - World-space, local, or active-object-inherited direction.
+  - Invert gradient, global/local control.
+  - Interactive **Trace Gradient** directly in the viewport.
 
-## Demo
-Showcase of the vertex color preview, fill color and fill alpha :
-![seeandapply](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_SeeAndApply.gif)
+- **Randomization**
+  - Random fill across entire mesh, per connected component, or per UV island.
+  - Optional normalization of values.
 
-Showcase of the vertex color gradient :
-![gradient](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_Gradient.gif)
+- **Channel Management**
+  - Clear channels to 0 or 1.
+  - Invert channel values.
+  - Switch channels (e.g., R → G).
 
-Showcase of the vertex color Randomize :
-![random](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_Random.gif)
+- **Ambient Occlusion Baking**
+  - Bake AO into a chosen vertex color channel.
+  - Control resolution, UV map, and progress tracking.
 
-Showcase of the Bake Texture :
-![baketexture](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_Texture.gif)
+- **Inspection Mode**
+  - Preview a single channel as grayscale.
+  - Accept or discard changes after editing in inspect mode.
+  - Special tools available while inspecting (fill value, randomize, gradients, etc.).
 
-Showcase of the Bake Ambiant Occlusion, Switch Channels and Clear Channels :
-![ao](https://github.com/Tarmunds/Enhanced_Vertex_Color_Tool/blob/main/Images/VCT_AoSwitchClear.gif)
+---
 
-## Installation
+## 📦 Installation
 
-1. Download the latest version from GitHub or Gumroad.
-2. Open Blender and go to **Edit > Preferences > Add-ons**.
-3. Click **Install**, navigate to the downloaded addon file, and select it.
-4. Enable the addon by checking the box next to **Enhanced Vertex Color Tool** in the **Add-ons** tab.
-5. Enjoy!
+1. Download the addon folder (containing `Panels.py`, `Properties.py`, `Functions.py`, `Operators.py`).
+2. In Blender, go to **Edit > Preferences > Add-ons > Install**.
+3. Select the addon `.zip` or the folder.
+4. Enable **Enhanced Vertex Color Tool** in the Add-ons list.
 
-## Usage
+---
 
-- After installation, the **Enhanced Vertex Color Tool** panel can be found in the **3D View > Tarmunds Addons** tab.
-- Select the mesh objects you want to modify, and use the provided operators. All operators iterate through all selected meshes to streamline your workflow.
+## 🖥️ Usage
 
-## Credits
+Once installed, the addon appears in the **3D Viewport > Sidebar (N-panel) > Tarmunds Addons > Enhanced Vertex Color Tool**.
 
-- **Author**: Tarmunds - Kostia Perry
+### Workflow Example
+1. Select a mesh.
+2. Toggle **See Vertex Color** to preview vertex colors in the viewport.
+3. Use **Fill Color** or **Gradient Fill** to apply vertex color data.
+4. Optionally use **AO to Vertex Color** to bake lighting data.
 
-## License
+---
 
-Distributed under the GNU General Public License v3. See `LICENSE` for more information.
+## 🛠️ Operators (`Operators.py`)
+
+| Operator | ID | Description |
+|----------|----|-------------|
+| **See Vertex Color** | `vct.see_vcolor` | Toggle viewport shading between Vertex Color & Material. |
+| **Shade Flat** | `vct.shade_flat` | Toggle between Flat and Studio lighting. |
+| **Fill Color** | `vct.fill_color` | Fill selected meshes with chosen color. |
+| **Fill Black/White** | `vct.fill_black`, `vct.fill_white` | Quick fill with black/white. |
+| **Fill 1 Channel** | `vct.fill_1channel` | Fill a single channel with constant value. |
+| **Gradient Fill** | `vct.gradient_fill` | Fill with directional gradient. |
+| **Random Fill** | `vct.random_fill` | Fill with randomized values. |
+| **Inspect Color** | `vct.inspect_color` | Enable inspect mode for a channel. |
+| **Discard Inspect Changes** | `vct.discard_inspect_changes` | Exit inspection, discard changes. |
+| **Inspect Fill Value** | `vct.inspect_fill_value` | Fill inspection channel with set value. |
+| **Clear Channel** | `vct.clear_channel` | Reset channel values (0 or 1). |
+| **Switch Channel** | `vct.switch_channel` | Swap two channels. |
+| **AO to Vertex Color** | `vct.ao_to_vertex_color` | Bake AO into vertex colors. |
+| **Invert Channel** | `vct.invert_channel` | Invert channel values. |
+| **Trace Gradient** | `vct.trace_gradient` | Interactive gradient tool in 3D View. |
+
+---
+
+## 🧩 Development
+
+- Code organized into:
+  - `Panels.py` → UI
+  - `Properties.py` → Addon properties
+  - `Functions.py` → Core logic
+  - `Operators.py` → Blender operators
+
+- Each module registers/unregisters its classes independently.
+
+
+---
+
+## 📜 License
+
+MIT License 
