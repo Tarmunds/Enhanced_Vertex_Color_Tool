@@ -1,8 +1,10 @@
+import importlib
+
 bl_info = {
-    "name": "Enhanced Vertex Color Tool",
-    "blender": (4, 0, 0),
+    "name": "Debug VCT",
+    "blender": (4, 2, 0),
     "category": "Object",
-    "version": (2, 7, 5),
+    "version": (3, 0, 0),
     "author": "Tarmunds",
     "description": "Advanced vertex color tools: fill, gradients, randomization, baked AO in vertex color, bake texture in vertex color, and switch/clear channels.",
     "doc_url": "https://tarmunds.gumroad.com/l/EnhancedVertexColorTool",
@@ -16,7 +18,31 @@ from bpy_extras.io_utils import ImportHelper
 from . import VCT_Operator
 from . import VCT_Pannel
 
+_SubModules = [
+    "VCT.Functions",
+    "VCT.Properties",
+    "VCT.Operators",
+    "VCT.Panels",
+]
 
+_modules = tuple(importlib.import_module(f".{name}", __name__) for name in _SubModules)
+
+for module in _modules:
+    importlib.reload(module)
+
+def register():
+    for module in _modules:
+        if hasattr(module, "register"):
+            module.register()
+
+def unregister():
+    for module in reversed(_modules):
+        if hasattr(module, "unregister"):
+            module.unregister()
+
+
+
+'''
 
 def register_properties():
     bpy.types.Scene.vct_settings = bpy.props.PointerProperty(type=VCT_Operator.VCT_GradientSettings)
@@ -356,3 +382,5 @@ def unregister():
 
 if __name__ == "__main__":
     register()
+
+    '''
