@@ -1,4 +1,4 @@
-# Enhanced Vertex Color Tool (VCT)
+# Enhanced Vertex Color Tool (VCT) v3.0 !!
 
 A Blender addon that provides advanced vertex color editing and visualization tools. It enhances the default vertex color workflow with powerful operations such as gradients, randomization, AO baking, channel management, and inspection.
 
@@ -99,3 +99,4 @@ Once installed, the addon appears in the **3D Viewport > Sidebar (N-panel) > Tar
 ## 📜 License
 
 MIT License 
+
