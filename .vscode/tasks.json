@@ -8,8 +8,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        //  ----  CHANGE THE DESTINATION PATH HERE  ----
-        "Compress-Archive -Path \"${workspaceFolder}\" -DestinationPath \"D:\\GitHub\\VCT_3.zip\" -Force"
+        "Compress-Archive -Path \"${workspaceFolder}\" -DestinationPath \"C:\\Users\\perry\\Documents\\Addons\\Vertex_Color_Tool.zip\" -Force"
       ],
       "group": {
         "kind": "build",
