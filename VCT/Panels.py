@@ -61,6 +61,9 @@ class VCT_Panel(bpy.types.Panel):
         row = go_to_row(layout)
         row.prop(vct_props, "Bedit_face_mode", text="Use Face Selection - Edit Mode Only", toggle=True)
 
+        row = go_to_row(layout)
+        row.prop(vct_props, "Bsrgb", text="sRGB Color Space", toggle=True)
+
         layout.separator()
 
         # Inspect Color Section

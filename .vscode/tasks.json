@@ -8,7 +8,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "Compress-Archive -Path \"${workspaceFolder}\" -DestinationPath \"C:\\Users\\perry\\Documents\\Addons\\Vertex_Color_Tool.zip\" -Force"
+        "Compress-Archive -Path \"${workspaceFolder}\" -DestinationPath \"D:\\GitHub\\enhanced_vertex_color_tool.zip\" -Force"
       ],
       "group": {
         "kind": "build",

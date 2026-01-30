@@ -50,9 +50,24 @@ def bmesh_to_object(context, bm, mesh):
         mesh.data.update() 
         bm.free()
 
-#verify color layer , or create one, and set it to active render layer
+def linear_to_srgb(value):
+    if value <= 0.0031308:
+        return 12.92 * value
+    else:
+        return 1.055 * (value ** (1.0 / 2.4)) - 0.055
+    
+def linear_color_to_srgb(color):
+    return mathutils.Color((
+        linear_to_srgb(color.r),
+        linear_to_srgb(color.g),
+        linear_to_srgb(color.b)
+    ))
+    
+
+#------verify color layer , or create one, and set it to active render layer------
 def fetch_color_layer(bm, mesh):
     color_layer = bm.loops.layers.color.verify()
+    #rn it only looking for col layer named "Col", else it create one
     mesh.data.color_attributes.active_color = mesh.data.color_attributes["Col"] if mesh.data.color_attributes.get("Col") else mesh.data.color_attributes.new(name="Col", type='BYTE_COLOR', domain='CORNER')
     return color_layer
 
@@ -67,9 +82,12 @@ def fetch_relevant_color_layer(bm, mesh):
         return fetch_color_layer(bm, mesh)
 
 def value_to_channel(value, Echannel, current_color, fillgrayscale=False):
+    VCTproperties = bpy.context.scene.vct_properties
     if fillgrayscale:
         return (value, value, value, 1.0)
     else:
+        if VCTproperties.Bsrgb:
+            value = linear_to_srgb(value)
         return {
             'R': (value, current_color.y, current_color.z, current_color.w),
             'G': (current_color.x, value, current_color.z, current_color.w),
@@ -82,6 +100,11 @@ def value_to_channel(value, Echannel, current_color, fillgrayscale=False):
 def fill_vertex_color(context, overide_color=None):
     VCTproperties = context.scene.vct_properties
     color = overide_color if overide_color else VCTproperties.fill_color
+    if VCTproperties.Bsrgb:
+        alpha = color[3]
+        color = linear_color_to_srgb(mathutils.Color((color[0], color[1], color[2])))
+        color = (color.r, color.g, color.b, alpha)
+
     meshes = fetch_mesh_in_context(context)
     if not meshes:
         return {'CANCELLED'}
@@ -111,6 +134,8 @@ def fill_channel(context):
     VCTproperties = context.scene.vct_properties
     Echannel = VCTproperties.fill_1channel
     value = VCTproperties.fill_1channel_value
+    if VCTproperties.Bsrgb:
+        value = linear_to_srgb(value)
     meshes = fetch_mesh_in_context(context)
     if not meshes: 
         return {'CANCELLED'}
@@ -128,6 +153,15 @@ def fill_channel(context):
         bmesh_to_object(context, bm, mesh)
 
     return {'FINISHED'}
+
+def should_affect_loop_editmode(vct_props, face, loop):
+    if not vct_props.affect_only_selected:
+        return True
+
+    if vct_props.Bedit_face_mode:
+        return face.select
+    else:
+        return loop.vert.select
 
 def fill_gradient(context):
     VCTproperties = context.scene.vct_properties
@@ -1067,13 +1101,3 @@ def fill_gradient_camera_radial(context, center_xy, radius_px, region=None, rv3d
 
     return {'FINISHED'}
 
-
-# affect face only
-def should_affect_loop_editmode(vct_props, face, loop):
-    if not vct_props.affect_only_selected:
-        return True
-
-    if vct_props.Bedit_face_mode:
-        return face.select
-    else:
-        return loop.vert.select

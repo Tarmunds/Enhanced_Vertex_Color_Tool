@@ -177,6 +177,11 @@ class VCTProperties(PropertyGroup):
         description="When enabled, affects only selected faces in Edit Mode (prevents painting across shared vertices).",
         default=False
     )
+    Bsrgb: BoolProperty(
+        name="sRGB Color Space",
+        description="Use sRGB color space for vertex colors (recommended for most cases). Disable for linear workflows.",
+        default=False
+    )
 
 
 _classes = (
