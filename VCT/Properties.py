@@ -172,6 +172,11 @@ class VCTProperties(PropertyGroup):
         name="Show Ambient Occlusion Options",
         default=False
     )
+    Bedit_face_mode: BoolProperty(
+        name="Edit Mode: Use Face Selection",
+        description="When enabled, affects only selected faces in Edit Mode (prevents painting across shared vertices).",
+        default=False
+    )
 
 
 _classes = (

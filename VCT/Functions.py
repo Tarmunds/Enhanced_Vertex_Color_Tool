@@ -99,7 +99,7 @@ def fill_vertex_color(context, overide_color=None):
         for face in bm.faces:
             for loop in face.loops:
                 if context.mode == 'EDIT_MESH':
-                    if loop.vert.select or not VCTproperties.affect_only_selected:
+                    if should_affect_loop_editmode(VCTproperties, face, loop):
                         loop[color_layer] = color
                 else:
                     loop[color_layer] = color
@@ -1066,3 +1066,14 @@ def fill_gradient_camera_radial(context, center_xy, radius_px, region=None, rv3d
         bmesh_to_object(context, bm, mesh)
 
     return {'FINISHED'}
+
+
+# affect face only
+def should_affect_loop_editmode(vct_props, face, loop):
+    if not vct_props.affect_only_selected:
+        return True
+
+    if vct_props.Bedit_face_mode:
+        return face.select
+    else:
+        return loop.vert.select

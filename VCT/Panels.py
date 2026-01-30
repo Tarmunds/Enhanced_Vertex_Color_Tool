@@ -58,6 +58,9 @@ class VCT_Panel(bpy.types.Panel):
         row = go_to_row(layout)
         row.prop(vct_props, "affect_only_selected", text="Affect Only Selection - Edit Mode Only", toggle=True, icon='RESTRICT_SELECT_OFF' if vct_props.affect_only_selected else 'RESTRICT_SELECT_ON')
 
+        row = go_to_row(layout)
+        row.prop(vct_props, "Bedit_face_mode", text="Use Face Selection - Edit Mode Only", toggle=True)
+
         layout.separator()
 
         # Inspect Color Section
