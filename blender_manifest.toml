@@ -1,0 +1,24 @@
+schema_version = "1.0.0"
+
+# Unique identifier for the extension (lowercase, python identifier style)
+id = "enhanced_vertex_color_tool"
+
+# Use semantic versioning as a string
+version = "3.5.0"
+
+name = "Enhanced Vertex Color Tool"
+tagline = "Advanced vertex color tools for filling, gradients, AO and more"
+
+maintainer = "Kostia Perry - Tarmunds"
+
+# This is an add-on type extension
+type = "add-on"
+
+# Optional website - use your Gumroad page or doc URL
+website = "https://tarmunds.gumroad.com/l/EnhancedVertexColorTool"
+
+# Minimum Blender version that supports extensions
+blender_version_min = "4.5.0"
+
+# License must use SPDX identifiers, your LICENSE is MIT
+license = ["SPDX:MIT"]
