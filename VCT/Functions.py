@@ -87,8 +87,14 @@ def fetch_color_layer(bm, mesh, context):
         layer_source = ca.get(keys)
         if layer_source.data_type != 'BYTE_COLOR' or layer_source.domain != 'CORNER':
             bm.free()
+            wasinedit = False
+            if context.mode == 'EDIT_MESH' or context.mode == 'EDIT':  # support both
+                bpy.ops.object.mode_set(mode='OBJECT')
+                wasinedit = True
             bpy.ops.geometry.color_attribute_convert(domain='CORNER', data_type='BYTE_COLOR')
             bm = bmesh_from_object(context, mesh)
+            if wasinedit:
+                bpy.ops.object.mode_set(mode='EDIT')
             keys = ca.active_color.name
             layer = bm.loops.layers.color.get(keys)
             layer_source = ca.get(keys)
