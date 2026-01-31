@@ -4,7 +4,7 @@ schema_version = "1.0.0"
 id = "enhanced_vertex_color_tool"
 
 # Use semantic versioning as a string
-version = "3.5.0"
+version = "3.8.0"
 
 name = "Enhanced Vertex Color Tool"
 tagline = "Advanced vertex color tools for filling, gradients, AO and more"

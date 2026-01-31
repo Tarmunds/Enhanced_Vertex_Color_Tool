@@ -4,7 +4,7 @@ bl_info = {
     "name": "Enhanced Vertex Color Tool",
     "blender": (4, 2, 0),
     "category": "Object",
-    "version": (3, 1, 0),
+    "version": (3, 8, 0),
     "author": "Tarmunds",
     "description": "Advanced vertex color tools: fill, gradients, randomization, baked AO in vertex color, bake texture in vertex color, and switch/clear channels.",
     "doc_url": "https://tarmunds.gumroad.com/l/EnhancedVertexColorTool",

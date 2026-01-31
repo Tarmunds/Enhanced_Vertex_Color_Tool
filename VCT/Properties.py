@@ -174,12 +174,16 @@ class VCTProperties(PropertyGroup):
     )
     Bedit_face_mode: BoolProperty(
         name="Edit Mode: Use Face Selection",
-        description="When enabled, affects only selected faces in Edit Mode (prevents painting across shared vertices).",
+        description="When enabled, affects only selected faces in Edit Mode (prevents painting across shared vertices / bleeding).",
         default=False
     )
     Bsrgb: BoolProperty(
         name="sRGB Color Space",
         description="Use sRGB color space for vertex colors (recommended for most cases). Disable for linear workflows.",
+        default=False
+    )
+    Bshow_advanced_options: BoolProperty(
+        name="Show Advanced Options",
         default=False
     )
 

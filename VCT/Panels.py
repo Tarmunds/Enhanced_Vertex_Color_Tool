@@ -58,13 +58,13 @@ class VCT_Panel(bpy.types.Panel):
         row = go_to_row(layout)
         row.prop(vct_props, "affect_only_selected", text="Affect Only Selection - Edit Mode Only", toggle=True, icon='RESTRICT_SELECT_OFF' if vct_props.affect_only_selected else 'RESTRICT_SELECT_ON')
 
-        row = go_to_row(layout)
-        row.prop(vct_props, "Bedit_face_mode", text="Use Face Selection - Edit Mode Only", toggle=True)
 
-        row = go_to_row(layout)
-        row.prop(vct_props, "Bsrgb", text="sRGB Color Space", toggle=True)
-
-        layout.separator()
+        box = dropdown_menu(layout, vct_props, "Bshow_advanced_options", "Advanced Options", section_icon='OPTIONS')
+        if box:
+            row = go_to_row(box)
+            row.prop(vct_props, "Bedit_face_mode", text="Use Face Mode - Edit Mode Only", toggle=True)
+            row = go_to_row(box)
+            row.prop(vct_props, "Bsrgb", text="sRGB Color Space", toggle=True)
 
         # Inspect Color Section
         if not context.scene.vct_properties.inspect_enable:
