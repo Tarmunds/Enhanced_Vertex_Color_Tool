@@ -63,23 +63,57 @@ def linear_color_to_srgb(color):
         linear_to_srgb(color.b)
     ))
     
+def _unique_attr_name(ca, base: str) -> str:
+    """Return a name not used by any attribute in this mesh."""
+    existing = {a.name for a in ca}
+    if base not in existing:
+        return base
+    i = 1
+    while True:
+        candidate = f"{base}_{i:03d}"
+        if candidate not in existing:
+            return candidate
+        i += 1
 
 #------verify color layer , or create one, and set it to active render layer------
-def fetch_color_layer(bm, mesh):
-    color_layer = bm.loops.layers.color.verify()
-    #rn it only looking for col layer named "Col", else it create one
-    mesh.data.color_attributes.active_color = mesh.data.color_attributes["Col"] if mesh.data.color_attributes.get("Col") else mesh.data.color_attributes.new(name="Col", type='BYTE_COLOR', domain='CORNER')
-    return color_layer
+def fetch_color_layer(bm, mesh, context):
+    ca = mesh.data.color_attributes
 
-def fetch_relevant_color_layer(bm, mesh):
+    if mesh.data.color_attributes:
+        if not ca.active_color:
+            ca.active_color = mesh.data.color_attributes[0]
+        keys = ca.active_color.name
+        layer = bm.loops.layers.color.get(keys)
+        layer_source = ca.get(keys)
+        if layer_source.data_type != 'BYTE_COLOR' or layer_source.domain != 'CORNER':
+            bm.free()
+            bpy.ops.geometry.color_attribute_convert(domain='CORNER', data_type='BYTE_COLOR')
+            bm = bmesh_from_object(context, mesh)
+            keys = ca.active_color.name
+            layer = bm.loops.layers.color.get(keys)
+            layer_source = ca.get(keys)
+        
+    else:
+        layer = bm.loops.layers.color.verify()
+        bmesh_to_object(context, bm, mesh)
+        bm = bmesh_from_object(context, mesh)
+
+    ca.active_color = ca.get(layer.name)
+    return layer, bm
+
+def fetch_relevant_color_layer(bm, mesh, context):
     VCTproperties = bpy.context.scene.vct_properties
     if VCTproperties.inspect_enable:
         if mesh in Inspect_meshes:
-            return bm.loops.layers.color.get("ChannelChecker")
+            return bm.loops.layers.color.get("ChannelChecker"), bm
         else:
-            return None
+            return None, bm
     else:
-        return fetch_color_layer(bm, mesh)
+        return fetch_color_layer(bm, mesh, context)
+
+
+
+#---- Main Functions ----#
 
 def value_to_channel(value, Echannel, current_color, fillgrayscale=False):
     VCTproperties = bpy.context.scene.vct_properties
@@ -94,8 +128,6 @@ def value_to_channel(value, Echannel, current_color, fillgrayscale=False):
             'B': (current_color.x, current_color.y, value, current_color.w),
             'A': (current_color.x, current_color.y, current_color.z, value),
         }[Echannel]
-
-#---- Main Functions ----#
 
 def fill_vertex_color(context, overide_color=None):
     VCTproperties = context.scene.vct_properties
@@ -117,7 +149,7 @@ def fill_vertex_color(context, overide_color=None):
             else:
                 return {'CANCELLED'}
         else:
-            color_layer = fetch_color_layer(bm, mesh)
+            color_layer, bm = fetch_color_layer(bm, mesh, context)
 
         for face in bm.faces:
             for loop in face.loops:
@@ -141,7 +173,7 @@ def fill_channel(context):
         return {'CANCELLED'}
     for mesh in meshes:
         bm = bmesh_from_object(context, mesh)
-        color_layer = fetch_relevant_color_layer(bm, mesh)
+        color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
 
         for face in bm.faces:
             for loop in face.loops:
@@ -219,7 +251,7 @@ def fill_gradient(context):
             else:
                 return {'CANCELLED'}
         else:
-            color_layer = fetch_color_layer(bm, mesh)
+            color_layer, bm = fetch_color_layer(bm, mesh, context)
         
         if use_global:
             mw = mesh.matrix_world
@@ -311,7 +343,7 @@ def fill_random(context):
 
         for mesh, rand_value in zip(meshes, random_values):
             bm = bmesh_from_object(context, mesh)
-            color_layer = fetch_relevant_color_layer(bm, mesh)
+            color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
             if VCTproperties.random_normalize:
                 pass  # Use precomputed normalized value
             else:
@@ -324,7 +356,7 @@ def fill_random(context):
     if random_per_connected:
         for mesh in meshes:
             bm = bmesh_from_object(context, mesh)
-            color_layer = fetch_relevant_color_layer(bm, mesh)
+            color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
             connected_loops_list = fetch_connected_loops(bm)
             random_values = [0.0] * len(connected_loops_list)
 
@@ -344,7 +376,7 @@ def fill_random(context):
     if random_per_uv_island:
         for mesh in meshes:
             bm = bmesh_from_object(context, mesh)
-            color_layer = fetch_relevant_color_layer(bm, mesh)
+            color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
             uv_island_loops_list = fetch_uv_island_loops(bm)
             random_values = [0.0] * len(uv_island_loops_list)
 
@@ -385,7 +417,7 @@ def inspect_color_channel(context):
     if not VCTproperties.inspect_enable:
         for mesh in meshes:
             bm = bmesh_from_object(context, mesh)
-            color_layer = fetch_color_layer(bm, mesh)
+            color_layer, bm = fetch_color_layer(bm, mesh, context)
 
             bm_channel_checker = bm.loops.layers.color.new("ChannelChecker")
 
@@ -408,7 +440,7 @@ def remove_inspector(context, keep_data=True):
         if not keep_data:
             mesh.data.color_attributes.remove(mesh.data.color_attributes.get("ChannelChecker"))
             bm = bmesh_from_object(context, mesh)
-            color_layer = fetch_color_layer(bm, mesh)
+            color_layer, bm = fetch_color_layer(bm, mesh, context)
             bmesh_to_object(context, bm, mesh)
         else:
             bm = bmesh_from_object(context, mesh)
@@ -562,7 +594,7 @@ def clear_channel(context, value):
         return {'CANCELLED'}
     for mesh in meshes:
         bm = bmesh_from_object(context, mesh)
-        color_layer = fetch_relevant_color_layer(bm, mesh)
+        color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
 
         for face in bm.faces:
             for loop in face.loops:
@@ -597,7 +629,7 @@ def switch_channel(context):
         return {'CANCELLED'}
     for mesh in meshes:
         bm = bmesh_from_object(context, mesh)
-        color_layer = fetch_relevant_color_layer(bm, mesh)
+        color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
 
         for face in bm.faces:
             for loop in face.loops:
@@ -723,7 +755,7 @@ def bake_ao_to_vertex_color(context):
 
             # ---- Transfer baked AO to vertex colors ----
             bm = bmesh_from_object(context, mesh)
-            color_layer = fetch_relevant_color_layer(bm, mesh)
+            color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
             bm_uv_layer = bm.loops.layers.uv.get(uv_layer_name) or bm.loops.layers.uv.active
 
             width, height = temp_image.size
@@ -806,7 +838,7 @@ def invert_vertex_colors(context):
 
     for mesh in meshes:
         bm = bmesh_from_object(context, mesh)
-        color_layer = fetch_relevant_color_layer(bm, mesh)
+        color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
 
         for face in bm.faces:
             for loop in face.loops:
@@ -1001,7 +1033,7 @@ def fill_gradient_camera_space(context, start_xy, end_xy, region=None, rv3d=None
         bm = bmesh_from_object(context, mesh)
 
         # choose the correct color layer (respects Inspect mode)
-        color_layer = fetch_relevant_color_layer(bm, mesh)
+        color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
         if color_layer is None:
             bmesh_to_object(context, bm, mesh)
             continue
@@ -1069,7 +1101,7 @@ def fill_gradient_camera_radial(context, center_xy, radius_px, region=None, rv3d
 
     for mesh in meshes:
         bm = bmesh_from_object(context, mesh)
-        color_layer = fetch_relevant_color_layer(bm, mesh)
+        color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
         if color_layer is None:
             bmesh_to_object(context, bm, mesh)
             continue
