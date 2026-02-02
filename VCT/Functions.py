@@ -902,7 +902,7 @@ def draw_2d(self, context):
         coords = [(x1, y1), (x2, y2)]
         primitive = 'LINES'
         #colors = [ (0.0, 0.0, 0.0, 1.0), channel_color]
-        if VCTproperties.Bcolor_gradient:
+        if VCTproperties.Bcolor_gradient and not VCTproperties.inspect_enable:
             colors = [VCTproperties.gradient_color_start, VCTproperties.gradient_color_end]
         else:
             colors = [ (0.0, 0.0, 0.0, 1.0), channel_color]
@@ -921,7 +921,7 @@ def draw_2d(self, context):
              y1 + math.sin(2*math.pi*i/segments)*radius)
             for i in range(segments + 1)
         ]
-        if VCTproperties.Bcolor_gradient:
+        if VCTproperties.Bcolor_gradient and not VCTproperties.inspect_enable:
             circle_colors = ([VCTproperties.gradient_color_end] if VCTproperties.gradient_invert else [VCTproperties.gradient_color_start]) * len(circle_coords)
         else:
             circle_colors = [channel_color] * len(circle_coords)
@@ -932,7 +932,7 @@ def draw_2d(self, context):
 
         # batch for single point at start
         point_batch = batch_for_shader(self.shader, 'POINTS',
-                                       {"pos": [(x1, y1)], "color": [channel_color] if not VCTproperties.Bcolor_gradient else ([VCTproperties.gradient_color_start] if VCTproperties.gradient_invert else [VCTproperties.gradient_color_end])})
+                                       {"pos": [(x1, y1)], "color": [channel_color] if not VCTproperties.Bcolor_gradient or VCTproperties.inspect_enable else ([VCTproperties.gradient_color_start] if VCTproperties.gradient_invert else [VCTproperties.gradient_color_end])})
 
         gpu.state.blend_set('ALPHA')
 
