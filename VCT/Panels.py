@@ -84,7 +84,7 @@ class VCT_Panel(bpy.types.Panel):
 
         #standard pannel when not inspecting
         if not context.scene.vct_properties.inspect_enable:
-
+            #fill color section
             box = dropdown_menu(layout, vct_props, "Bshow_fill_color", "Fill Color", section_icon='BRUSH_DATA')
             if box:
                 row = go_to_row(box, scale_y=1.5)
@@ -101,7 +101,7 @@ class VCT_Panel(bpy.types.Panel):
                 row.prop(vct_props, "fill_1channel_value", text="Fill Value")
                 row = go_to_row(box, scale_y=1.0)
                 row.prop(vct_props, "fill_1channel", text="Fill Channel", expand=True)
-
+            #gradient fill section
             box = dropdown_menu(layout, vct_props, "Bshow_gradient", "Gradient Fill", section_icon='TRANSFORM_ORIGINS')
             if box:
                 row = go_to_row(box)
@@ -110,7 +110,11 @@ class VCT_Panel(bpy.types.Panel):
                 row.operator("vct.trace_gradient", text="Trace Linear Gradient", icon='CURVE_PATH', depress=True if vct_props.trace_gradient_active[0] else False).Bcircle = False
                 row.operator("vct.trace_gradient", text="Trace Radial Gradient", icon='CURVE_NCIRCLE', depress=True if vct_props.trace_gradient_active[1] else False).Bcircle = True
                 row = go_to_row(box)
-                row.prop(vct_props, "gradient_channel", text="Gradient Channel", expand=True)
+                if not vct_props.Bcolor_gradient:
+                    row.prop(vct_props, "gradient_channel", text="Gradient Channel", expand=True)
+                else:
+                    row.prop(vct_props, "gradient_color_start", text="")
+                    row.prop(vct_props, "gradient_color_end", text="")
                 row = go_to_row(box, scale_y=1.0)
                 row.prop(vct_props, "gradient_direction", text="Gradient Direction", expand=True)
                 row = go_to_row(box, scale_y=1.0)
@@ -121,6 +125,8 @@ class VCT_Panel(bpy.types.Panel):
                 sub.enabled =  not vct_props.gradient_WS_direction
                 sub.prop(vct_props, "gradient_direction_inherit_from_active", text="Inherit From Active", toggle=True)
                 row.prop(vct_props, "gradient_invert", text="Invert Gradient", toggle=True)
+                row = go_to_row(box)
+                row.prop(vct_props, "Bcolor_gradient", text="Color Gradient", toggle=True)
 
 
             box = dropdown_menu(layout, vct_props, "Bshow_random", "Random Fill", section_icon='POINTCLOUD_POINT')

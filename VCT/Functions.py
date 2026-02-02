@@ -63,17 +63,25 @@ def linear_color_to_srgb(color):
         linear_to_srgb(color.b)
     ))
     
-def _unique_attr_name(ca, base: str) -> str:
-    """Return a name not used by any attribute in this mesh."""
-    existing = {a.name for a in ca}
-    if base not in existing:
-        return base
-    i = 1
-    while True:
-        candidate = f"{base}_{i:03d}"
-        if candidate not in existing:
-            return candidate
-        i += 1
+def lerp_float(a: float, b: float, t: float) -> float:
+    return a + (b - a) * t
+
+def lerp_vector4(a: mathutils.Vector, b: mathutils.Vector, t: float) -> mathutils.Vector:
+    VCTproperties = bpy.context.scene.vct_properties
+    if VCTproperties.Bsrgb:
+        return mathutils.Vector((
+            linear_to_srgb(lerp_float(a[0], b[0], t)),
+            linear_to_srgb(lerp_float(a[1], b[1], t)),
+            linear_to_srgb(lerp_float(a[2], b[2], t)),
+            lerp_float(a[3], b[3], t)
+        ))
+    else:
+        return mathutils.Vector((
+            lerp_float(a[0], b[0], t),
+            lerp_float(a[1], b[1], t),
+            lerp_float(a[2], b[2], t),
+            lerp_float(a[3], b[3], t)
+        ))
 
 #------verify color layer , or create one, and set it to active render layer------
 def fetch_color_layer(bm, mesh, context):
@@ -207,6 +215,7 @@ def fill_gradient(context):
     use_global = VCTproperties.gradient_global
     Edirection = VCTproperties.gradient_direction
     InvertGradient = VCTproperties.gradient_invert
+    ColorGradient = VCTproperties.Bcolor_gradient
     direction = {
         'X': (1, 0, 0),
         'Y': (0, 1, 0),
@@ -311,9 +320,15 @@ def fill_gradient(context):
 
                     if context.mode == 'EDIT_MESH' and VCTproperties.affect_only_selected:
                         if loop.vert.select:
-                            loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+                            if ColorGradient and not VCTproperties.inspect_enable:
+                                loop[color_layer] = lerp_vector4(VCTproperties.gradient_color_start, VCTproperties.gradient_color_end, value)
+                            else:
+                                loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
                     else:
-                        loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+                        if ColorGradient and not VCTproperties.inspect_enable:
+                            loop[color_layer] = lerp_vector4(VCTproperties.gradient_color_start, VCTproperties.gradient_color_end, value)
+                        else:
+                            loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
 
         bmesh_to_object(context, bm, mesh)
     return {'FINISHED'}
@@ -878,7 +893,7 @@ def draw_2d(self, context):
             'G': (0, 1, 0, 1.0),
             'B': (0, 0, 1, 1.0),
             'A': (1, 1, 1, 1.0),
-        }[context.scene.vct_properties.gradient_channel]
+        }[VCTproperties.gradient_channel]
 
     if self.shader is None:
         self.shader = gpu.shader.from_builtin("SMOOTH_COLOR")
@@ -886,7 +901,11 @@ def draw_2d(self, context):
     if not self.Bcircle:
         coords = [(x1, y1), (x2, y2)]
         primitive = 'LINES'
-        colors = [ (0.0, 0.0, 0.0, 1.0), channel_color]
+        #colors = [ (0.0, 0.0, 0.0, 1.0), channel_color]
+        if VCTproperties.Bcolor_gradient:
+            colors = [VCTproperties.gradient_color_start, VCTproperties.gradient_color_end]
+        else:
+            colors = [ (0.0, 0.0, 0.0, 1.0), channel_color]
 
         batch = batch_for_shader(self.shader, primitive, {"pos": coords, "color": colors})
         gpu.state.line_width_set(2.0)
@@ -902,7 +921,10 @@ def draw_2d(self, context):
              y1 + math.sin(2*math.pi*i/segments)*radius)
             for i in range(segments + 1)
         ]
-        circle_colors = [channel_color] * len(circle_coords)
+        if VCTproperties.Bcolor_gradient:
+            circle_colors = ([VCTproperties.gradient_color_end] if VCTproperties.gradient_invert else [VCTproperties.gradient_color_start]) * len(circle_coords)
+        else:
+            circle_colors = [channel_color] * len(circle_coords)
 
         # batch for circle
         circle_batch = batch_for_shader(self.shader, 'LINE_STRIP',
@@ -910,7 +932,7 @@ def draw_2d(self, context):
 
         # batch for single point at start
         point_batch = batch_for_shader(self.shader, 'POINTS',
-                                       {"pos": [(x1, y1)], "color": [channel_color]})
+                                       {"pos": [(x1, y1)], "color": [channel_color] if not VCTproperties.Bcolor_gradient else ([VCTproperties.gradient_color_start] if VCTproperties.gradient_invert else [VCTproperties.gradient_color_end])})
 
         gpu.state.blend_set('ALPHA')
 
@@ -1004,6 +1026,7 @@ def fill_gradient_camera_space(context, start_xy, end_xy, region=None, rv3d=None
     VCTproperties = context.scene.vct_properties
     Echannel = VCTproperties.gradient_channel
     InvertGradient = VCTproperties.gradient_invert
+    ColorGradient = VCTproperties.Bcolor_gradient
 
     # Validate the line
     x1, y1 = start_xy
@@ -1067,10 +1090,17 @@ def fill_gradient_camera_space(context, start_xy, end_xy, region=None, rv3d=None
                 t = max(0.0, min(1.0, t))
 
                 value = 1.0 - t if InvertGradient else t
-                loop[color_layer] = value_to_channel(
-                    value, Echannel, loop[color_layer],
-                    fillgrayscale=True if VCTproperties.inspect_enable else False
-                )
+                if ColorGradient and not VCTproperties.inspect_enable:
+                    loop[color_layer] = lerp_vector4(
+                        VCTproperties.gradient_color_start,
+                        VCTproperties.gradient_color_end,
+                        value
+                    )
+                else:
+                    loop[color_layer] = value_to_channel(
+                        value, Echannel, loop[color_layer],
+                        fillgrayscale=True if VCTproperties.inspect_enable else False
+                    )
 
         bmesh_to_object(context, bm, mesh)
 
@@ -1081,6 +1111,7 @@ def fill_gradient_camera_radial(context, center_xy, radius_px, region=None, rv3d
     VCTproperties = context.scene.vct_properties
     Echannel = VCTproperties.gradient_channel
     InvertGradient = VCTproperties.gradient_invert
+    ColorGradient = VCTproperties.Bcolor_gradient
 
     if radius_px <= 1e-6:
         return {'CANCELLED'}
@@ -1130,10 +1161,17 @@ def fill_gradient_camera_radial(context, center_xy, radius_px, region=None, rv3d
                 t = max(0.0, min(1.0, d / radius_px))  # 0 at center, 1 at radius
                 value = t if InvertGradient else 1.0 - t
 
-                loop[color_layer] = value_to_channel(
-                    value, Echannel, loop[color_layer],
-                    fillgrayscale=True if VCTproperties.inspect_enable else False
-                )
+                if ColorGradient and not VCTproperties.inspect_enable:
+                    loop[color_layer] = lerp_vector4(
+                        VCTproperties.gradient_color_start,
+                        VCTproperties.gradient_color_end,
+                        value
+                    )
+                else:
+                    loop[color_layer] = value_to_channel(
+                        value, Echannel, loop[color_layer],
+                        fillgrayscale=True if VCTproperties.inspect_enable else False
+                    )
 
         bmesh_to_object(context, bm, mesh)
 
