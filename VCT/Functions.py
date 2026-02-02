@@ -319,7 +319,7 @@ def fill_gradient(context):
                         value = 1.0 - value
 
                     if context.mode == 'EDIT_MESH' and VCTproperties.affect_only_selected:
-                        if loop.vert.select:
+                        if should_affect_loop_editmode(VCTproperties, face, loop):
                             if ColorGradient and not VCTproperties.inspect_enable:
                                 loop[color_layer] = lerp_vector4(VCTproperties.gradient_color_start, VCTproperties.gradient_color_end, value)
                             else:
@@ -1073,34 +1073,34 @@ def fill_gradient_camera_space(context, start_xy, end_xy, region=None, rv3d=None
 
         for face in bm.faces:
             for loop in face.loops:
-                if edit_mode and affect_only_selected and not loop.vert.select:
-                    continue
+                if should_affect_loop_editmode(VCTproperties, face, loop) or not edit_mode:
+                    world_co = mw @ loop.vert.co
+                    # Project to 2D (region) coordinates
+                    p2d = view3d_utils.location_3d_to_region_2d(region, rv3d, world_co)
+                    if p2d is None:
+                        continue
 
-                world_co = mw @ loop.vert.co
-                # Project to 2D (region) coordinates
-                p2d = view3d_utils.location_3d_to_region_2d(region, rv3d, world_co)
-                if p2d is None:
-                    continue
+                    # Project this point onto the traced line to get normalized t in [0..1]
+                    v = mathutils.Vector((p2d.x, p2d.y)) - line_origin
+                    t = v.dot(line_dir_n) / math.sqrt(length_sq) * math.sqrt(length_sq)  # collapses to v.dot(n)
+                    # Because n is unit along the line direction, t is in pixels from start; normalize by line length:
+                    t = v.dot(line_dir) / length_sq  # equivalent and clearer
+                    t = max(0.0, min(1.0, t))
 
-                # Project this point onto the traced line to get normalized t in [0..1]
-                v = mathutils.Vector((p2d.x, p2d.y)) - line_origin
-                t = v.dot(line_dir_n) / math.sqrt(length_sq) * math.sqrt(length_sq)  # collapses to v.dot(n)
-                # Because n is unit along the line direction, t is in pixels from start; normalize by line length:
-                t = v.dot(line_dir) / length_sq  # equivalent and clearer
-                t = max(0.0, min(1.0, t))
-
-                value = 1.0 - t if InvertGradient else t
-                if ColorGradient and not VCTproperties.inspect_enable:
-                    loop[color_layer] = lerp_vector4(
-                        VCTproperties.gradient_color_start,
-                        VCTproperties.gradient_color_end,
-                        value
-                    )
+                    value = 1.0 - t if InvertGradient else t
+                    if ColorGradient and not VCTproperties.inspect_enable:
+                        loop[color_layer] = lerp_vector4(
+                            VCTproperties.gradient_color_start,
+                            VCTproperties.gradient_color_end,
+                            value
+                        )
+                    else:
+                        loop[color_layer] = value_to_channel(
+                            value, Echannel, loop[color_layer],
+                            fillgrayscale=True if VCTproperties.inspect_enable else False
+                        )
                 else:
-                    loop[color_layer] = value_to_channel(
-                        value, Echannel, loop[color_layer],
-                        fillgrayscale=True if VCTproperties.inspect_enable else False
-                    )
+                    continue
 
         bmesh_to_object(context, bm, mesh)
 
@@ -1149,29 +1149,29 @@ def fill_gradient_camera_radial(context, center_xy, radius_px, region=None, rv3d
 
         for face in bm.faces:
             for loop in face.loops:
-                if edit_mode and affect_only_selected and not loop.vert.select:
-                    continue
+                if should_affect_loop_editmode(VCTproperties, face, loop) or not edit_mode:
+                    world_co = mw @ loop.vert.co
+                    p2d = view3d_utils.location_3d_to_region_2d(region, rv3d, world_co)
+                    if p2d is None:
+                        continue
 
-                world_co = mw @ loop.vert.co
-                p2d = view3d_utils.location_3d_to_region_2d(region, rv3d, world_co)
-                if p2d is None:
-                    continue
+                    d = (mathutils.Vector((p2d.x, p2d.y)) - c).length
+                    t = max(0.0, min(1.0, d / radius_px))  # 0 at center, 1 at radius
+                    value = t if InvertGradient else 1.0 - t
 
-                d = (mathutils.Vector((p2d.x, p2d.y)) - c).length
-                t = max(0.0, min(1.0, d / radius_px))  # 0 at center, 1 at radius
-                value = t if InvertGradient else 1.0 - t
-
-                if ColorGradient and not VCTproperties.inspect_enable:
-                    loop[color_layer] = lerp_vector4(
-                        VCTproperties.gradient_color_start,
-                        VCTproperties.gradient_color_end,
-                        value
+                    if ColorGradient and not VCTproperties.inspect_enable:
+                        loop[color_layer] = lerp_vector4(
+                            VCTproperties.gradient_color_start,
+                            VCTproperties.gradient_color_end,
+                            value
+                        )
+                    else:
+                        loop[color_layer] = value_to_channel(
+                            value, Echannel, loop[color_layer],
+                            fillgrayscale=True if VCTproperties.inspect_enable else False
                     )
                 else:
-                    loop[color_layer] = value_to_channel(
-                        value, Echannel, loop[color_layer],
-                        fillgrayscale=True if VCTproperties.inspect_enable else False
-                    )
+                    continue
 
         bmesh_to_object(context, bm, mesh)
 
