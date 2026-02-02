@@ -3,17 +3,14 @@
   "tasks": [
     {
       "label": "Zip whole project",
-      "type": "shell",
-      "command": "powershell",
+      "type": "process",
+      "command": "pwsh",
       "args": [
         "-NoProfile",
         "-Command",
-        "Compress-Archive -Path \"${workspaceFolder}\" -DestinationPath \"D:\\GitHub\\enhanced_vertex_color_tool.zip\" -Force"
+        "$ws = '${workspaceFolder}'; $parent = Split-Path -Parent $ws; $dest = Join-Path $parent ('${workspaceFolderBasename}.zip'); Compress-Archive -Path $ws -DestinationPath $dest -Force; Write-Host \"Created: $dest\""
       ],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
+      "group": { "kind": "build", "isDefault": true },
       "problemMatcher": []
     }
   ]
