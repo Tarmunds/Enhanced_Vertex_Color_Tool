@@ -347,7 +347,7 @@ def fill_random(context):
     def write_random_value_to_loops(loops, rand_value):
         for loop in loops:
             if context.mode == 'EDIT_MESH':
-                if loop.vert.select or not VCTproperties.affect_only_selected:
+                if should_affect_loop_editmode(VCTproperties, loop.face, loop):
                     loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
             else:
                 loop[color_layer] = value_to_channel(rand_value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
@@ -620,7 +620,7 @@ def clear_channel(context, value):
         for face in bm.faces:
             for loop in face.loops:
                 if context.mode == 'EDIT_MESH':
-                    if loop.vert.select or not VCTproperties.affect_only_selected:
+                    if should_affect_loop_editmode(VCTproperties, face, loop):
                         loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
                 else:
                     loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
@@ -655,7 +655,7 @@ def switch_channel(context):
         for face in bm.faces:
             for loop in face.loops:
                 if context.mode == 'EDIT_MESH':
-                    if loop.vert.select or not VCTproperties.affect_only_selected:
+                    if should_affect_loop_editmode(VCTproperties, face, loop):
                         loop[color_layer] = switch_values(loop[color_layer])
                 else:
                     loop[color_layer] = switch_values(loop[color_layer])
@@ -864,7 +864,7 @@ def invert_vertex_colors(context):
         for face in bm.faces:
             for loop in face.loops:
                 if context.mode == 'EDIT_MESH':
-                    if loop.vert.select or not VCTproperties.affect_only_selected:
+                    if should_affect_loop_editmode(VCTproperties, face, loop):
                         source_value = getattr(loop[color_layer], {'R': 'x', 'G': 'y', 'B': 'z', 'A': 'w'}[Echannel])
                         loop[color_layer] = value_to_channel(1.0 - source_value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
                 else:
