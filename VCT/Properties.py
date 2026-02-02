@@ -81,6 +81,28 @@ class VCTProperties(PropertyGroup):
         size=2,
         default=(False, False)
     )
+    Bcolor_gradient: BoolProperty(
+        name="Color Gradient",
+        default=False
+    )
+    gradient_color_start: FloatVectorProperty(
+        name="Gradient Color Start",
+        subtype='COLOR',
+        size=4,
+        default=(1.0, 0.0, 0.0, 1.0),
+        min=0.0, max=1.0
+    )
+    gradient_color_end: FloatVectorProperty(
+        name="Gradient Color End",
+        subtype='COLOR',
+        size=4,
+        default=(0.0, 0.0, 1.0, 1.0),
+        min=0.0, max=1.0
+    )
+    Bgradient_advanced_options: BoolProperty(
+        name="Gradient Advanced Options",
+        default=False
+    )
     random_channel: EnumProperty(
         name="Random Channel",
         items=Echannel_source,
