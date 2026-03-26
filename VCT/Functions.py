@@ -459,23 +459,52 @@ def remove_inspector(context, keep_data=True):
 
     for mesh in Inspect_meshes:
         if not keep_data:
-            mesh.data.color_attributes.remove(mesh.data.color_attributes.get("ChannelChecker"))
+            attr = mesh.data.color_attributes.get("ChannelChecker")
+            if attr:
+                mesh.data.color_attributes.remove(attr)
             bm = bmesh_from_object(context, mesh)
             color_layer, bm = fetch_color_layer(bm, mesh, context)
             bmesh_to_object(context, bm, mesh)
+
         else:
             bm = bmesh_from_object(context, mesh)
             check_color_layer = bm.loops.layers.color.get("ChannelChecker")
-            color_layer = bm.loops.layers.color.get("Col") if bm.loops.layers.color.get("Col") else bm.loops.layers.color.verify()
-            
+
+            # Guard: if the layer isn't reachable as a loop color layer, bail cleanly
+            if check_color_layer is None:
+                bmesh_to_object(context, bm, mesh)
+                attr = mesh.data.color_attributes.get("ChannelChecker")
+                if attr:
+                    mesh.data.color_attributes.remove(attr)
+                continue
+
+            # Find the original layer — anything that is NOT ChannelChecker
+            original_layer = None
+            for name in bm.loops.layers.color.keys():
+                if name != "ChannelChecker":
+                    original_layer = bm.loops.layers.color.get(name)
+                    break
+            if original_layer is None:
+                original_layer = bm.loops.layers.color.verify()
+
+            original_layer_name = original_layer.name
+
             for face in bm.faces:
                 for loop in face.loops:
-                    value = loop[check_color_layer].x  # Since it's grayscale, R=G=B
-                    loop[color_layer] = value_to_channel(value, VCTproperties.inspect_channel, loop[color_layer], fillgrayscale=False)
-            
-            bm.loops.layers.color.remove(bm.loops.layers.color.get("ChannelChecker"))
+                    value = loop[check_color_layer].x  # grayscale R=G=B
+                    loop[original_layer] = value_to_channel(
+                        value,
+                        VCTproperties.inspect_channel,
+                        loop[original_layer],
+                        fillgrayscale=False
+                    )
+
+            bm.loops.layers.color.remove(check_color_layer)
             bmesh_to_object(context, bm, mesh)
-            mesh.data.color_attributes.active_color = mesh.data.color_attributes["Col"]
+
+            restored = mesh.data.color_attributes.get(original_layer_name)
+            if restored:
+                mesh.data.color_attributes.active_color = restored
 
     VCTproperties.inspect_enable = False
     Inspect_meshes.clear()
