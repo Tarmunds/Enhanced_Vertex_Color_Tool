@@ -199,11 +199,11 @@ class VCT_Panel(bpy.types.Panel):
             row = go_to_row(layout)
             row.operator("vct.random_fill", text="Random Fill", icon='BRUSH_DATA')
             row = go_to_row(layout, scale_y=1.0)
-            row.prop(vct_props, "random_normalize", text="Normalize Random Values", toggle=True)
             row.prop(vct_props, "random_per_connected", text="Per Connected", toggle=True)
             row.prop(vct_props, "random_per_uv_island", text="Per UV Island", toggle=True)
-            row = go_to_row(layout, scale_y=1.0)
             row.prop(vct_props, "random_per_vertex", text="Per Vertex", toggle=True)
+            row = go_to_row(layout, scale_y=1.0)
+            row.prop(vct_props, "random_normalize", text="Normalize Random Values", toggle=True)
 
             layout.separator()
             # Gradient Fill buttons and options

@@ -89,9 +89,11 @@ def lerp_vector4(a: mathutils.Vector, b: mathutils.Vector, t: float) -> mathutil
             lerp_float(a[3], b[3], t)
         ))
 
-COLOR_ATTRIBUTE_NAME = "Color"
 
 #------verify color layer , or create one, and set it to active render layer------
+
+COLOR_ATTRIBUTE_NAME = "Color"
+
 def ensure_color_attribute(context, mesh):
     #mesh data is edited in object mode, so any bmesh or layer held for `mesh` is stale after a change
     ca = mesh.data.color_attributes
