@@ -135,6 +135,15 @@ class VCT_ClearChannel(bpy.types.Operator):
     def execute(self, context):
         return clear_channel(context, value=self.value)
 
+class VCT_BiasChannel(bpy.types.Operator):
+    bl_idname = "vct.bias_channel"
+    bl_label = "Bias Channel"
+    bl_description = "Multiply the current value of the selected channel by the bias percentage (clamped to 1.0)"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        return bias_channel(context)
+
 class VCT_SwitchChannel(bpy.types.Operator):
     bl_idname = "vct.switch_channel"
     bl_label = "Switch Channel"
@@ -218,6 +227,7 @@ _classes = (
     VCT_DiscardInspectChanges,
     VCT_InspectFillValue,
     VCT_ClearChannel,
+    VCT_BiasChannel,
     VCT_SwitchChannel,
     VCT_Fill1Channel,
     VCT_AOToVertexColor,

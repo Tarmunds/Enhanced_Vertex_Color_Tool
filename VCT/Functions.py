@@ -147,12 +147,13 @@ def fetch_relevant_color_layer(bm, mesh, context):
 
 #---- Main Functions ----#
 
-def value_to_channel(value, Echannel, current_color, fillgrayscale=False):
+def value_to_channel(value, Echannel, current_color, fillgrayscale=False, apply_srgb=True):
     VCTproperties = bpy.context.scene.vct_properties
     if fillgrayscale:
         return (value, value, value, 1.0)
     else:
-        if VCTproperties.Bsrgb:
+        #apply_srgb is disabled when the value is derived from what is already stored in the channel
+        if VCTproperties.Bsrgb and apply_srgb:
             value = linear_to_srgb(value)
         return {
             'R': (value, current_color.y, current_color.z, current_color.w),
@@ -372,6 +373,28 @@ def fill_random(context):
 
     random_per_connected = VCTproperties.random_per_connected
     random_per_uv_island = VCTproperties.random_per_uv_island
+    random_per_vertex = VCTproperties.random_per_vertex
+
+    if random_per_vertex:
+        for mesh in meshes:
+            bm = bmesh_from_object(context, mesh)
+            color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
+            verts = list(bm.verts)
+            random_values = [0.0] * len(verts)
+
+            if VCTproperties.random_normalize:
+                step = 1.0 / max(len(verts) - 1, 1)
+                random_values = [i * step for i in range(len(verts))]
+                random.shuffle(random_values)
+
+            for vert, rand_value in zip(verts, random_values):
+                if VCTproperties.random_normalize:
+                    pass  # Use precomputed normalized value
+                else:
+                    rand_value = random.random()
+                write_random_value_to_loops(vert.link_loops, rand_value)
+            bmesh_to_object(context, bm, mesh)
+        return {'FINISHED'}
     if not random_per_connected and not random_per_uv_island:
         random_values = [0.0] * len(meshes)
 
@@ -671,6 +694,38 @@ def clear_channel(context, value):
                         loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
                 else:
                     loop[color_layer] = value_to_channel(value, Echannel, loop[color_layer], fillgrayscale=True if VCTproperties.inspect_enable else False)
+        bmesh_to_object(context, bm, mesh)
+    return {'FINISHED'}
+
+def bias_channel(context):
+    VCTproperties = context.scene.vct_properties
+    Echannel = VCTproperties.clear_channel
+    factor = VCTproperties.bias_percent / 100.0
+    meshes = fetch_mesh_in_context(context)
+    if not meshes:
+        return {'CANCELLED'}
+
+    #the inspector layer is grayscale, the value always lives in x
+    component = 'x' if VCTproperties.inspect_enable else {'R': 'x', 'G': 'y', 'B': 'z', 'A': 'w'}[Echannel]
+
+    def biased_value(loop_color):
+        return min(max(getattr(loop_color, component) * factor, 0.0), 1.0)
+
+    for mesh in meshes:
+        bm = bmesh_from_object(context, mesh)
+        color_layer, bm = fetch_relevant_color_layer(bm, mesh, context)
+
+        for face in bm.faces:
+            for loop in face.loops:
+                if context.mode == 'EDIT_MESH' and not should_affect_loop_editmode(VCTproperties, face, loop):
+                    continue
+                loop[color_layer] = value_to_channel(
+                    biased_value(loop[color_layer]),
+                    Echannel,
+                    loop[color_layer],
+                    fillgrayscale=True if VCTproperties.inspect_enable else False,
+                    apply_srgb=False
+                )
         bmesh_to_object(context, bm, mesh)
     return {'FINISHED'}
 

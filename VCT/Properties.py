@@ -116,6 +116,11 @@ class VCTProperties(PropertyGroup):
         name="Random Per Connected Component",
         default=False
     )
+    random_per_vertex: BoolProperty(
+        name="Random Per Vertex",
+        description="Give every vertex its own random value instead of one value per object",
+        default=False
+    )
     random_per_uv_island: BoolProperty(
         name="Random Per UV Island",
         default=False
@@ -133,6 +138,14 @@ class VCTProperties(PropertyGroup):
         name="Clear Channel",
         items=Echannel_source,
         default='R'
+    )
+    bias_percent: FloatProperty(
+        name="Bias",
+        description="Multiply the current channel value by this percentage (50% halves it, 200% doubles it). The result is clamped to 1.0",
+        default=100.0,
+        min=0.0,
+        max=1000.0,
+        subtype='PERCENTAGE',
     )
     switch_source_channel: EnumProperty(
         name="Switch Source Channel",
