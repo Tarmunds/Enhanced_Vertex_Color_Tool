@@ -24,7 +24,10 @@ def fetch_view_color_type(context):
         return shading.color_type
     return None
 
-def fetch_mesh_in_context(context):
+def fetch_mesh_in_context(context) -> list:
+    """
+    return list of selected meshes in object mode or edit mode, or cancel if not in either mode
+    """
     if context.mode == 'OBJECT':
         return [obj for obj in context.selected_objects if obj.type == 'MESH']
     elif context.mode == 'EDIT_MESH':
@@ -32,7 +35,10 @@ def fetch_mesh_in_context(context):
     return {'CANCELLED'}
 
 #setup bm based on edit mode
-def bmesh_from_object(context, mesh):
+def bmesh_from_object(context, mesh) -> bmesh.types.BMesh:
+    """
+    return bmesh object based on the current edit mode
+    """
     if context.mode == 'EDIT_MESH':
         bm = bmesh.from_edit_mesh(mesh.data)
     else:
@@ -83,37 +89,49 @@ def lerp_vector4(a: mathutils.Vector, b: mathutils.Vector, t: float) -> mathutil
             lerp_float(a[3], b[3], t)
         ))
 
+COLOR_ATTRIBUTE_NAME = "Color"
+
 #------verify color layer , or create one, and set it to active render layer------
-def fetch_color_layer(bm, mesh, context):
+def ensure_color_attribute(context, mesh):
+    #mesh data is edited in object mode, so any bmesh or layer held for `mesh` is stale after a change
     ca = mesh.data.color_attributes
 
-    if mesh.data.color_attributes:
-        if not ca.active_color:
-            ca.active_color = mesh.data.color_attributes[0]
-        keys = ca.active_color.name
-        layer = bm.loops.layers.color.get(keys)
-        layer_source = ca.get(keys)
-        if layer_source.data_type != 'BYTE_COLOR' or layer_source.domain != 'CORNER':
-            bm.free()
-            wasinedit = False
-            if context.mode == 'EDIT_MESH' or context.mode == 'EDIT':  # support both
-                bpy.ops.object.mode_set(mode='OBJECT')
-                wasinedit = True
-            bpy.ops.geometry.color_attribute_convert(domain='CORNER', data_type='BYTE_COLOR')
-            bm = bmesh_from_object(context, mesh)
-            if wasinedit:
-                bpy.ops.object.mode_set(mode='EDIT')
-            keys = ca.active_color.name
-            layer = bm.loops.layers.color.get(keys)
-            layer_source = ca.get(keys)
-        
-    else:
-        layer = bm.loops.layers.color.verify()
-        bmesh_to_object(context, bm, mesh)
-        bm = bmesh_from_object(context, mesh)
+    if ca and ca.active_color is None:
+        ca.active_color_index = 0
 
-    ca.active_color = ca.get(layer.name)
-    return layer, bm
+    needs_create = not ca
+    needs_convert = bool(ca) and (
+        ca.active_color.data_type != 'BYTE_COLOR'
+        or ca.active_color.domain != 'CORNER'
+    )
+    if not (needs_create or needs_convert):
+        return ca.active_color.name, False
+
+    wasinedit = context.mode == 'EDIT_MESH'
+    if wasinedit:
+        bpy.ops.object.mode_set(mode='OBJECT')
+    try:
+        if needs_create:
+            ca.active_color = ca.new(name=COLOR_ATTRIBUTE_NAME, type='BYTE_COLOR', domain='CORNER')
+        else:
+            #color_attribute_convert only ever touches the active object
+            previous_active = context.view_layer.objects.active
+            context.view_layer.objects.active = mesh
+            bpy.ops.geometry.color_attribute_convert(domain='CORNER', data_type='BYTE_COLOR')
+            context.view_layer.objects.active = previous_active
+    finally:
+        if wasinedit:
+            bpy.ops.object.mode_set(mode='EDIT')
+
+    return ca.active_color.name, True
+
+def fetch_color_layer(bm, mesh, context):
+    keys, changed = ensure_color_attribute(context, mesh)
+    if changed:
+        if context.mode != 'EDIT_MESH':
+            bm.free()   #standalone bmesh we own, now stale
+        bm = bmesh_from_object(context, mesh)   #the edit bmesh was freed by the mode toggle, re-acquire it
+    return bm.loops.layers.color.get(keys), bm
 
 def fetch_relevant_color_layer(bm, mesh, context):
     VCTproperties = bpy.context.scene.vct_properties
@@ -155,8 +173,8 @@ def fill_vertex_color(context, overide_color=None):
     if not meshes:
         return {'CANCELLED'}
 
-    for mesh in meshes:
-        bm = bmesh_from_object(context, mesh)
+    for mesh in meshes: #for each mesh
+        bm = bmesh_from_object(context, mesh) #get the bmesh
         if VCTproperties.inspect_enable:
             if mesh in Inspect_meshes:
                 color_layer = bm.loops.layers.color.get("ChannelChecker")
