@@ -144,7 +144,7 @@ class VCTProperties(PropertyGroup):
         description="Multiply the current channel value by this percentage (50% halves it, 200% doubles it). The result is clamped to 1.0",
         default=100.0,
         min=0.0,
-        max=1000.0,
+        soft_max=200.0,
         subtype='PERCENTAGE',
     )
     switch_source_channel: EnumProperty(
